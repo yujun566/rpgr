@@ -13161,7 +13161,605 @@ const bootWait = setInterval(function(){
 })();
 </script>
 
-<!-- 난이도 선택 모달 -->
+<script>
+/* ================================================================
+   🌠 모험+ 확장팩 2탄
+   직업 6종(일반2·전설2·히든2, 도트외형+애니메이션+스킬 3개씩)
+   + 칭호 / 몬스터도감 / 룬소켓 / 낚시 / 요일던전 / 펫원정
+   + 장비초월 / 자동전투 / PVP모의대전 / 이벤트달력
+   ================================================================ */
+(function(){
+'use strict';
+function E$(id){ return document.getElementById(id); }
+const F2 = f => ['............'].concat(f.slice(0,13));   // 걷기 2프레임 자동 생성
+
+/* ============================================================
+   🎭 신규 직업 6종 — 도트 스프라이트(2프레임 애니메이션) & 팔레트
+   ============================================================ */
+// 🗡️ 도적 (일반)
+const SPR_ROGUE = [
+'....aaaa....','...aaaaaa...','..aaaaaaaa..','..adssssda..','..ads.e.da..','..adssssda..',
+'...aAAAAa...','..aAAwwAAa..','.aAAAwwAAAa.','.aAAAwwAAAa.','..aAAAAAAd..','..dAAAAAAd..',
+'...dd..dd...','...dd..dd...'];
+// ✨ 성직자 (일반)
+const SPR_PRIEST = [
+'....gggg....','...dAAAAd...','..dAAAAAAd..','..dhssssHd..','..dhs.e.Hd..','..dhssssHd..',
+'...aAAAAa...','..aAwwwwAa..','.aAAwwwwAAa.','.aAAwwwwAAa.','..aAAAAAAa..','..dAAAAAAd..',
+'...dd..dd...','...dd..dd...'];
+// 🐉 용기사 (전설)
+const SPR_DKNIGHT = [
+'..w.dddd.w..','...dAAAAd...','..dAAAAAAd..','..dhssssHd..','..dhs.e.Hd..','..dhssssHd..',
+'...aAAAAa...','..aAAggAAa..','.aAAAggAAAa.','.aAAAggAAAa.','..aAAAAAAd..','..dAAAAAAd..',
+'...dd..dd...','...dd..dd...'];
+// 🌌 공허술사 (전설·부유)
+const SPR_VOID = [
+'....aaaa....','...aAAAAa...','..aAAAAAAa..','..aAssssAa..','..aAse.eAa..','..aAssssAa..',
+'...aAAAAa...','..aAAwwAAa..','.aAAAwwAAAa.','.aAAAwwAAAa.','..aAAAAAAa..','...aAAAAa...',
+'....a..a....','............'];
+// 👤 그림자 군주 (히든)
+const SPR_SHADOW = [
+'..w.w..w.w..','..wwwwwwww..','..aaaaaaaa..','..adddddda..','..ad.e.eda..','..adddddda..',
+'...aaaaaa...','..aaawwaaa..','.aaaawwaaaa.','.aaaawwaaaa.','..aaaaaaad..','..daaaaaad..',
+'...dd..dd...','...dd..dd...'];
+// ⚒️ 신장장이 (히든)
+const SPR_SMITH = [
+'...dddddd...','..dwwwwwwd..','..dhssssHd..','..dhs.e.Hd..','..dhssssHd..','...aAAAAa...',
+'..aAAggAAa..','.aAAAggAAAa.','.aAAAggAAAa.','..aAAAAAAa..','..aAAAAAAa..','..dAAAAAAd..',
+'...dd..dd...','...dd..dd...'];
+
+SPR.job_rogue        = [SPR_ROGUE,   F2(SPR_ROGUE)];
+SPR.job_priest       = [SPR_PRIEST,  F2(SPR_PRIEST)];
+SPR.job_dragonknight = [SPR_DKNIGHT, F2(SPR_DKNIGHT)];
+SPR.job_voidwalker   = [SPR_VOID,    F2(SPR_VOID)];
+SPR.job_shadowmonarch= [SPR_SHADOW,  F2(SPR_SHADOW)];
+SPR.job_godsmith     = [SPR_SMITH,   F2(SPR_SMITH)];
+
+PAL.job_rogue        = { a:'#3a3a52', A:'#5c5c80', d:'#20202f', s:'#e8c8a0', e:'#ff5470', w:'#c8ccd8', h:'#2c2c40', H:'#44445e', g:'#8890a8', k:'#101018' };
+PAL.job_priest       = { a:'#e8e4f2', A:'#ffffff', d:'#b0a8d0', h:'#d8cc70', H:'#f2ea9a', s:'#f0c8a0', e:'#4a6ad8', w:'#ffd23f', g:'#ffe98a', k:'#6a6488' };
+PAL.job_dragonknight = { a:'#8a2430', A:'#c04050', d:'#4e1018', h:'#d87a2a', H:'#f0a050', s:'#f0c8a0', e:'#ffd23f', w:'#ffb03a', g:'#ff7a3a', k:'#280a0e' };
+PAL.job_voidwalker   = { a:'#2c2050', A:'#4c3a86', d:'#181030', s:'#0e0a20', e:'#43e6cf', w:'#a06bff', h:'#241a44', H:'#3a2c68', g:'#7a5ad0', k:'#0a0618' };
+PAL.job_shadowmonarch= { a:'#1c1c28', A:'#32324a', d:'#0c0c14', s:'#101018', e:'#a06bff', w:'#6a3aa0', h:'#14141e', H:'#26263a', g:'#4a2a78', k:'#050508' };
+PAL.job_godsmith     = { a:'#6a4a2a', A:'#9a7040', d:'#3e2a16', h:'#c05020', H:'#e87a3a', s:'#f0c8a0', e:'#ffd23f', w:'#ff5470', g:'#ffb03a', k:'#20140a' };
+
+/* ---------- 신규 스킬 18개 ---------- */
+Object.assign(SKILL_DEFS, {
+  // 🗡️ 도적
+  ambush:      { name:'급습', icon:'🗡️', cd:6,  job:'rogue', desc:'그림자에서 튀어나와 공격력의 300% 피해', fn:()=>skillDamage(3.0,'급습') },
+  smoke_bomb:  { name:'연막탄', icon:'💨', cd:20, job:'rogue', desc:'HP 25% 회복 + 8초간 공격력 +40%', fn:()=>{ const h=Math.floor(playerMaxHP()*0.25); pHpCur=Math.min(playerMaxHP(),pHpCur+h); skillBuff(1.4,8,'연막탄'); log('<span class="g">💨 연막! HP +'+fmt(h)+'</span>'); } },
+  assassinate: { name:'암살', icon:'🩸', cd:16, job:'rogue', desc:'치명타 확정, 공격력의 700% 피해', fn:()=>skillDamage(7.0,'암살',true) },
+  // ✨ 성직자
+  holy_light:  { name:'성스러운 빛', icon:'✨', cd:7,  job:'priest', desc:'빛의 심판, 공격력의 350% 피해', fn:()=>skillDamage(3.5,'성스러운 빛') },
+  blessing:    { name:'축복', icon:'🙏', cd:22, job:'priest', desc:'14초간 공격력 +70%', fn:()=>skillBuff(1.7,14,'축복') },
+  divine_grace:{ name:'신의 가호', icon:'💛', cd:25, job:'priest', desc:'HP 60% 회복', fn:()=>{ const h=Math.floor(playerMaxHP()*0.6); pHpCur=Math.min(playerMaxHP(),pHpCur+h); log('<span class="g">💛 신의 가호! HP +'+fmt(h)+'</span>'); } },
+  // 🐉 용기사
+  dragon_breath:{ name:'용의 숨결', icon:'🔥', cd:8, job:'dragonknight', desc:'화염 브레스, 공격력의 550% 피해', fn:()=>skillDamage(5.5,'용의 숨결') },
+  wyvern_strike:{ name:'비룡강타', icon:'🐉', cd:18, job:'dragonknight', desc:'급강하 3연격, 공격력의 350%씩 3회', fn:()=>{ for(let i=0;i<3;i++) setTimeout(()=>skillDamage(3.5,'비룡강타'), i*130); } },
+  dragon_scale:{ name:'용린 갑옷', icon:'🛡️', cd:24, job:'dragonknight', desc:'HP 40% 회복 + 10초간 공격력 +50%', fn:()=>{ const h=Math.floor(playerMaxHP()*0.4); pHpCur=Math.min(playerMaxHP(),pHpCur+h); skillBuff(1.5,10,'용린 갑옷'); log('<span class="g">🛡️ 용린! HP +'+fmt(h)+'</span>'); } },
+  // 🌌 공허술사
+  void_collapse:{ name:'공허 붕괴', icon:'🕳️', cd:7, job:'voidwalker', desc:'공간을 붕괴시켜 공격력의 500% 피해', fn:()=>skillDamage(5.0,'공허 붕괴') },
+  dimension_cut:{ name:'차원 절단', icon:'⚡', cd:15, job:'voidwalker', desc:'치명타 확정, 공격력의 800% 피해', fn:()=>skillDamage(8.0,'차원 절단',true) },
+  null_field:  { name:'무의 영역', icon:'🌌', cd:26, job:'voidwalker', desc:'10초간 공격력 +120%', fn:()=>skillBuff(2.2,10,'무의 영역') },
+  // 👤 그림자 군주
+  shadow_army: { name:'그림자 군단', icon:'👥', cd:10, job:'shadowmonarch', desc:'그림자 병사 소환, 공격력의 250%씩 5회', fn:()=>{ for(let i=0;i<5;i++) setTimeout(()=>skillDamage(2.5,'그림자 군단'), i*110); } },
+  dominate:    { name:'지배', icon:'👁️', cd:20, job:'shadowmonarch', desc:'12초간 공격력 +100%', fn:()=>skillBuff(2.0,12,'지배') },
+  dark_burst:  { name:'어둠 폭발', icon:'🌑', cd:25, job:'shadowmonarch', desc:'응축된 어둠 폭발, 공격력의 1800% 피해', fn:()=>skillDamage(18.0,'어둠 폭발') },
+  // ⚒️ 신장장이
+  forge_smash: { name:'신철 강타', icon:'🔨', cd:8, job:'godsmith', desc:'신철 망치 내려찍기, 공격력의 650% 피해', fn:()=>skillDamage(6.5,'신철 강타') },
+  temper:      { name:'초월 담금질', icon:'🔥', cd:22, job:'godsmith', desc:'12초간 공격력 +90%', fn:()=>skillBuff(1.9,12,'초월 담금질') },
+  creation_hammer:{ name:'창조의 망치', icon:'⚒️', cd:28, job:'godsmith', desc:'만물을 벼리는 일격, 공격력의 2000% 피해', fn:()=>skillDamage(20.0,'창조의 망치') },
+});
+
+/* ---------- 직업 등록 ---------- */
+Object.assign(JOBS, {
+  rogue: { name:'도적', icon:'🥷', hidden:false,
+    spr:'job_rogue', pal:'job_rogue',
+    desc:'그림자 속에서 급소를 노린다. 최고 수준의 치명타 특화.',
+    atkMul:1.1, defMul:0.8, hpMul:0.85, critMul:1.8,
+    skills:['ambush','smoke_bomb','assassinate'] },
+  priest: { name:'성직자', icon:'✨', hidden:false,
+    spr:'job_priest', pal:'job_priest',
+    desc:'빛의 힘으로 치유하고 심판한다. 생존력 최강의 일반 직업.',
+    atkMul:0.95, defMul:1.1, hpMul:1.3, critMul:1.0,
+    skills:['holy_light','blessing','divine_grace'] },
+  dragonknight: { name:'용기사', icon:'🐉', hidden:false, legend:true,
+    spr:'job_dragonknight', pal:'job_dragonknight',
+    desc:'[전설] 용과 계약한 기사. 공수 모두 최상급의 균형.',
+    atkMul:1.6, defMul:1.5, hpMul:1.6, critMul:1.2,
+    skills:['dragon_breath','wyvern_strike','dragon_scale'] },
+  voidwalker: { name:'공허술사', icon:'🌌', hidden:false, legend:true,
+    spr:'job_voidwalker', pal:'job_voidwalker',
+    desc:'[전설] 균열 너머의 공허를 다룬다. 파괴력 특화 전설 직업.',
+    atkMul:1.8, defMul:0.9, hpMul:1.0, critMul:1.5,
+    skills:['void_collapse','dimension_cut','null_field'] },
+  shadowmonarch: { name:'그림자 군주', icon:'👤', hidden:true,
+    spr:'job_shadowmonarch', pal:'job_shadowmonarch',
+    desc:'[히든] 어둠을 지배하는 왕. 그림자 군단을 부린다.',
+    atkMul:1.9, defMul:1.2, hpMul:1.2, critMul:1.6,
+    skills:['shadow_army','dominate','dark_burst'] },
+  godsmith: { name:'신장장이', icon:'⚒️', hidden:true,
+    spr:'job_godsmith', pal:'job_godsmith',
+    desc:'[히든] 신의 대장간을 이은 자. 만물을 벼려 무기로 만든다.',
+    atkMul:1.7, defMul:1.4, hpMul:1.4, critMul:1.3,
+    skills:['forge_smash','temper','creation_hammer'] },
+});
+JOB_ORDER.push('rogue','priest','dragonknight','voidwalker','shadowmonarch','godsmith');
+
+/* ---------- 직업 해금 조건 ---------- */
+function x2(){ if(!S.x2) S.x2={}; return S.x2; }
+function jobUnlockInfo(id){
+  const j = JOBS[id]; if(!j) return {ok:true, txt:''};
+  switch(id){
+    case 'spellblade': return {ok: !!S.spellbladeUnlocked, txt:'검사·마법사 경험 + 스테이지 100 + 검사/마법사 스킬 각 20회'};
+    case 'dragonknight': return {ok:(S.rebirths||0)>=2 && (S.maxStage||1)>=120, txt:'환생 2회 + 스테이지 120 도달'};
+    case 'voidwalker': return {ok: S.ext && Object.keys(S.ext.bossKilled||{}).length>=4 && Object.keys(S.ext.storyRead||{}).length>=6, txt:'도전 보스 4종 처치 + 균열의 기록 6챕터 열람'};
+    case 'shadowmonarch': return {ok:(S.jobsExperienced||{}).rogue && (S.totalKills||0)>=30000 && S.ext && Object.keys(S.ext.hidden||{}).length>=2, txt:'도적 경험 + 총 처치 30,000 + 숨겨진 던전 2곳 정복'};
+    case 'godsmith': return {ok:(S.jobsExperienced||{}).shopkeeper && S.ext && (S.ext.craftCount||0)>=15 && (S.enhSuccess||0)>=150, txt:'만물상 경험 + 제작 15회 + 강화 성공 150회'};
+    default: return {ok:true, txt:''};
+  }
+}
+// 해금 알림 (한 번만)
+setInterval(function(){ try{
+  if(typeof S==='undefined'||!S) return; x2(); if(!S.x2.jobNoti) S.x2.jobNoti={};
+  for(const id of ['dragonknight','voidwalker','shadowmonarch','godsmith']){
+    if(!S.x2.jobNoti[id] && jobUnlockInfo(id).ok){
+      S.x2.jobNoti[id]=true;
+      const j=JOBS[id];
+      log('<span class="gDEV">'+j.icon+' '+(j.legend?'전설':'히든')+' 직업 ['+j.name+'] 해금! 전직 탭에서 확인하세요!</span>');
+      try{ if(typeof showToast==='function') showToast(j.icon+' ['+j.name+'] 해금!','gacha',4000); }catch(e){}
+    }
+  }
+}catch(e){} }, 3000);
+
+/* ---------- 전직 UI 재정의 (전설/히든 지원) ---------- */
+renderJobUI = function(){
+  const box = E$('jobList'); if(!box) return;
+  const curId = curJobId();
+  const cdLeft = jobCooldownLeft();
+  let header = cdLeft>0
+    ? '<div style="border:2px solid var(--gold);padding:6px 8px;margin-bottom:6px;font-size:11px;color:var(--gold)">🕐 전직은 30일에 한 번만 가능합니다. 다음 전직까지 <b>'+fmtJobCooldown(cdLeft)+'</b> 남음</div>'
+    : '<div style="font-size:11px;color:var(--green);margin-bottom:6px">✅ 지금 전직할 수 있습니다 (전직 후 30일간 재전직 불가)</div>';
+  const rows = JOB_ORDER.map(id=>{
+    const j = JOBS[id]; if(!j) return '';
+    const isCur = id===curId;
+    const u = jobUnlockInfo(id);
+    if(j.hidden && !u.ok){
+      return '<div style="border:2px dashed var(--line);padding:8px;margin:4px 0;opacity:.6"><b>❓ ??? (히든 직업)</b>'
+        + '<div style="font-size:10px;color:var(--mut);margin-top:3px">해금 조건: '+u.txt+'</div></div>';
+    }
+    const skills=(j.skills||[]).map(sid=>SKILL_DEFS[sid]).filter(Boolean);
+    const skillTxt=skills.map(s=>s.icon+s.name).join(' · ');
+    const statTxt='ATK×'+j.atkMul+' DEF×'+j.defMul+' HP×'+j.hpMul+' 치명×'+j.critMul;
+    const canChange = cdLeft<=0 && u.ok;
+    const tag = j.hidden?' <span style="color:#ff2d95">🌟히든</span>':(j.legend?' <span style="color:var(--gold)">⭐전설</span>':'');
+    const btn = isCur?'' : '<button class="buy" style="padding:4px 10px'+(canChange?'':';opacity:.4;cursor:not-allowed')+'" '
+      +(canChange?'':'disabled ')+'onclick="tryChangeJob(\''+id+'\')">'+(u.ok?(cdLeft<=0?'전직':'🔒대기'):'🔒잠김')+'</button>';
+    return '<div style="border:2px solid '+(isCur?'var(--gold)':(j.legend?'#7a611c':(j.hidden?'#6a2a5a':'var(--line)')))+';padding:8px;margin:4px 0;'+(isCur?'background:var(--panel2)':'')+'">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center">'
+      +'<b style="color:'+(isCur?'var(--gold)':'var(--rift)')+'">'+j.icon+' '+j.name+(isCur?' (현재)':'')+tag+'</b>'+btn+'</div>'
+      +'<div style="font-size:11px;color:var(--txt);margin-top:4px">'+esc(j.desc)+'</div>'
+      +'<div style="font-size:10px;color:var(--mut);margin-top:3px">'+statTxt+(j.noWeapon?' · ⚠️무기 장착 불가(투척)':'')+'</div>'
+      +(!u.ok&&u.txt?'<div style="font-size:10px;color:var(--gold);margin-top:3px">🔒 해금: '+u.txt+'</div>':'')
+      +'<div style="font-size:10px;color:var(--cyan);margin-top:3px">스킬: '+esc(skillTxt)+'</div></div>';
+  }).join('');
+  box.innerHTML = header + rows;
+};
+tryChangeJob = function(id){
+  if(!JOBS[id] || id===curJobId()) return;
+  const u = jobUnlockInfo(id);
+  if(!u.ok){ alert('['+JOBS[id].name+'] 해금 조건: '+u.txt); return; }
+  const left = jobCooldownLeft();
+  if(left>0){
+    alert('전직은 30일에 한 번만 가능합니다.\n다음 전직까지: '+fmtJobCooldown(left));
+    try{ if(typeof showToast==='function') showToast('🕐 전직 대기 중','warn',2500); }catch(e){}
+    return;
+  }
+  setJob(id); renderJobUI();
+};
+window.tryChangeJob = tryChangeJob;
+
+/* ============================================================
+   💠 룬 & 칭호 & 몬스터도감 & 낚시버프 → 스탯 후킹 (원본 함수 래핑)
+   ============================================================ */
+function ensureX2(){
+  if(typeof S==='undefined'||!S) return false;
+  x2();
+  const e=S.x2;
+  if(!e.runes) e.runes={atk:0,def:0,crit:0,gold:0,hp:0};
+  if(!e.sockets) e.sockets={weapon:[],armor:[]};
+  if(!e.mobKills) e.mobKills={};
+  if(!e.title) e.title=null;
+  if(!e.fish) e.fish={n:0,r:0,l:0,total:0,buffUntil:0,lastCast:0};
+  if(!e.exped) e.exped={until:0,pets:0};
+  if(!e.dailyDgn) e.dailyDgn={last:''};
+  if(!e.auto) e.auto={skill:false,potion:false};
+  if(!e.pvp) e.pvp={pts:0,w:0,l:0,streak:0,best:0};
+  if(!e.cal) e.cal={days:0,last:'',claimed:{}};
+  if(!e.jobNoti) e.jobNoti={};
+  // 출석일 카운트
+  const today=new Date().toDateString();
+  if(e.cal.last!==today){ e.cal.last=today; e.cal.days=(e.cal.days||0)+1; }
+  return true;
+}
+function socketBonus(kind){
+  if(!S.x2||!S.x2.sockets) return 0;
+  const all=[].concat(S.x2.sockets.weapon||[],S.x2.sockets.armor||[]);
+  return all.filter(t=>t===kind).length;
+}
+const TITLES = [
+  {id:'slayer',   name:'학살자',       c:()=>(S.totalKills||0)>=20000,  eff:{atk:0.03}, txt:'총 처치 20,000'},
+  {id:'collector',name:'수집광',       c:()=>S.ext&&Object.keys(S.ext.codexOwned||{}).length>=40, eff:{gold:0.10}, txt:'도감 40종'},
+  {id:'conqueror',name:'균열 정복자',  c:()=>(S.maxStage||1)>=100,     eff:{atk:0.05}, txt:'스테이지 100'},
+  {id:'immortal', name:'불사신',       c:()=>(S.rebirths||0)>=3,       eff:{hp:0.10},  txt:'환생 3회'},
+  {id:'smith',    name:'대장장이',     c:()=>(S.enhSuccess||0)>=100,   eff:{def:0.05}, txt:'강화 성공 100회'},
+  {id:'angler',   name:'낚시왕',       c:()=>S.x2&&S.x2.fish.total>=50, eff:{gold:0.08}, txt:'물고기 50마리'},
+  {id:'captain',  name:'원정대장',     c:()=>S.ext&&(S.ext.raid.kills||0)>=5, eff:{atk:0.04,def:0.04}, txt:'레이드 보스 5마리'},
+  {id:'shadow',   name:'그림자',       c:()=>(S.totalKills||0)>=50000, eff:{crit:0.03}, txt:'총 처치 50,000'},
+  {id:'bard',     name:'이야기꾼',     c:()=>S.ext&&Object.keys(S.ext.storyRead||{}).length>=8, eff:{atk:0.02,gold:0.05}, txt:'스토리 전 챕터'},
+  {id:'legend',   name:'살아있는 전설', c:()=>S.ext&&Object.keys(S.ext.ach||{}).length>=10, eff:{atk:0.03,def:0.03,hp:0.03}, txt:'확장 업적 10개'},
+];
+function curTitle(){ return TITLES.find(t=>t.id===(S.x2&&S.x2.title))||null; }
+function titleEff(k){ const t=curTitle(); return (t&&t.eff[k])||0; }
+function mobCodexMastered(){ return Object.values((S.x2&&S.x2.mobKills)||{}).filter(n=>n>=100).length; }
+
+// ---- 원본 스탯 함수 래핑 ----
+const _pATK=playerATK, _pDEF=playerDEF, _pHP=playerMaxHP, _pCRIT=critRate, _pGOLD=goldMult;
+playerATK=function(){ let v=_pATK(); if(!isFinite(v)) return v;
+  v*=1+0.05*socketBonus('atk'); v*=1+titleEff('atk'); v*=1+0.01*mobCodexMastered();
+  if(S.x2&&Date.now()<S.x2.fish.buffUntil) v*=1.25;
+  return Math.round(v); };
+playerDEF=function(){ let v=_pDEF(); if(!isFinite(v)) return v;
+  v*=1+0.05*socketBonus('def'); v*=1+titleEff('def'); return Math.round(v); };
+playerMaxHP=function(){ let v=_pHP(); if(!isFinite(v)) return v;
+  v*=1+0.05*socketBonus('hp'); v*=1+titleEff('hp'); return Math.round(v); };
+critRate=function(){ let v=_pCRIT(); v+=0.02*socketBonus('crit'); v+=titleEff('crit'); return Math.min(0.95,v); };
+goldMult=function(){ let v=_pGOLD(); v*=1+0.06*socketBonus('gold'); v*=1+titleEff('gold'); return v; };
+
+/* ---------- 🐾 몬스터 도감: spawnMob 래핑으로 처치 집계 ---------- */
+const _spawnMob = spawnMob;
+spawnMob = function(isBoss){
+  try{
+    if(typeof mob!=='undefined' && mob && mob.hp<=0 && ensureX2()){
+      const n = mob.name || '미지의 존재';
+      const prev = S.x2.mobKills[n]||0;
+      S.x2.mobKills[n]=prev+1;
+      if(prev+1===100){ log('<span class="c">🐾 몬스터 도감: ['+esc(n)+'] 100마리 정복! 전체 공격력 +1% 영구!</span>'); }
+    }
+  }catch(e){}
+  return _spawnMob.apply(this, arguments);
+};
+
+/* ============================================================
+   UI: 모험+ 탭에 신규 섹션 주입
+   ============================================================ */
+function injectUI(){
+  const tab=E$('tab-ext'); if(!tab||E$('x2TitleBox')) return;
+  tab.insertAdjacentHTML('beforeend',
+   '<h2 style="margin-top:14px;">🎖️ 칭호 <span id="x2TitleCur" style="color:var(--gold);font-size:12px;"></span></h2><div id="x2TitleBox"></div>'
+  +'<h2 style="margin-top:12px;">🐾 몬스터 도감 <span id="x2MobTxt" style="color:var(--mut);font-size:12px;"></span></h2>'
+  +'<div class="notice" style="margin:0 0 6px;">같은 몬스터 100마리 처치마다 전체 공격력 +1% 영구 상승!</div>'
+  +'<div id="x2MobBox" style="max-height:160px;overflow-y:auto;border:1px dashed var(--line);padding:6px;"></div>'
+  +'<h2 style="margin-top:12px;">💠 룬 소켓 <span id="x2RuneTxt" style="color:var(--mut);font-size:12px;"></span></h2>'
+  +'<div class="notice" style="margin:0 0 6px;">낚시·요일던전·원정에서 룬 획득 → 무기/방어구에 각 3칸 장착</div>'
+  +'<div id="x2RuneBox"></div>'
+  +'<h2 style="margin-top:12px;">🎣 균열 낚시터</h2><div id="x2FishBox"></div>'
+  +'<h2 style="margin-top:12px;">🗓️ 요일 던전 <span id="x2DgnTxt" style="color:var(--mut);font-size:12px;"></span></h2><div id="x2DgnBox"></div>'
+  +'<h2 style="margin-top:12px;">🐕 펫 원정</h2><div id="x2ExpBox"></div>'
+  +'<h2 style="margin-top:12px;">🌟 장비 초월 <span style="color:var(--mut);font-size:12px;">(+10강 장비를 한계 돌파)</span></h2><div id="x2TransBox"></div>'
+  +'<h2 style="margin-top:12px;">🤖 자동 전투 설정</h2><div id="x2AutoBox"></div>'
+  +'<h2 style="margin-top:12px;">⚔️ PVP 모의 대전 <span id="x2PvpTxt" style="color:var(--rift);font-size:12px;"></span></h2><div id="x2PvpBox"></div>'
+  +'<h2 style="margin-top:12px;">📆 이벤트 달력 <span id="x2CalTxt" style="color:var(--gold);font-size:12px;"></span></h2><div id="x2CalBox"></div>');
+}
+
+/* ---------- 🎖️ 칭호 ---------- */
+function equipTitle(id){
+  ensureX2();
+  if(id && !TITLES.find(t=>t.id===id&&t.c())) { log('<span class="r">아직 획득하지 못한 칭호입니다.</span>'); return; }
+  S.x2.title = id||null;
+  log('<span class="g">🎖️ 칭호 '+(id?'['+TITLES.find(t=>t.id===id).name+'] 장착!':'해제')+'</span>');
+  saveGame(true); renderX2(); if(typeof renderStats==='function') renderStats();
+}
+window.equipTitle=equipTitle;
+function renderTitles(){
+  if(!E$('x2TitleBox')) return;
+  const cur=curTitle();
+  E$('x2TitleCur').textContent = cur?('장착 중: ['+cur.name+']'):'(미장착)';
+  E$('x2TitleBox').innerHTML = TITLES.map(t=>{
+    let ok=false; try{ ok=t.c(); }catch(e){}
+    const on=cur&&cur.id===t.id;
+    const effNames={atk:'공격',def:'방어',hp:'HP',crit:'치명',gold:'골드'};
+    const eff=Object.entries(t.eff).map(function(pair){ var k=pair[0],v=pair[1]; return effNames[k]+'+'+(v*100)+(k==='crit'?'%p':'%'); }).join(' ');
+    return '<div class="row" style="opacity:'+(ok?1:.5)+'"><div class="info">'+(on?'👑 ':'')+'['+t.name+'] <small>'+t.txt+' · '+eff+'</small></div>'
+      +'<button '+(ok?'':'disabled')+' onclick="equipTitle('+(on?'null':'\''+t.id+'\'')+')">'+(on?'해제':(ok?'장착':'미획득'))+'</button></div>';
+  }).join('');
+}
+/* ---------- 🐾 몬스터 도감 ---------- */
+function renderMobCodex(){
+  if(!E$('x2MobBox')) return;
+  const mk=S.x2.mobKills||{}; const keys=Object.keys(mk);
+  E$('x2MobTxt').textContent='('+mobCodexMastered()+'종 정복 · 공격 +'+mobCodexMastered()+'%)';
+  E$('x2MobBox').innerHTML = keys.length? keys.sort((a,b)=>mk[b]-mk[a]).map(n=>{
+    const c=mk[n], m=c>=100;
+    return '<span style="display:inline-block;width:49%;font-size:11px;color:'+(m?'var(--gold)':'var(--txt)')+'">'+(m?'★':'·')+' '+esc(n)+' <span style="color:var(--mut)">'+Math.min(c,100)+'/100</span></span>';
+  }).join('') : '<div style="color:var(--mut);font-size:11px">몬스터를 처치하면 기록됩니다</div>';
+}
+/* ---------- 💠 룬 ---------- */
+const RUNE_INFO={atk:['⚔️','공격 룬','+5% 공격'],def:['🛡️','방어 룬','+5% 방어'],crit:['🎯','치명 룬','+2%p 치명타'],gold:['💰','황금 룬','+6% 골드'],hp:['❤️','생명 룬','+5% HP']};
+function socketRune(slot,type){
+  ensureX2();
+  if((S.x2.runes[type]||0)<1){ log('<span class="r">룬이 부족합니다.</span>'); return; }
+  if(S.x2.sockets[slot].length>=3){ log('<span class="r">소켓이 가득 찼습니다. (해제 후 장착)</span>'); return; }
+  S.x2.runes[type]--; S.x2.sockets[slot].push(type);
+  log('<span class="g">💠 '+RUNE_INFO[type][1]+' → '+(slot==='weapon'?'무기':'방어구')+' 장착!</span>');
+  saveGame(true); renderX2(); if(typeof renderStats==='function') renderStats();
+}
+function unsocketRune(slot,idx){
+  ensureX2();
+  const t=S.x2.sockets[slot][idx]; if(!t) return;
+  S.x2.sockets[slot].splice(idx,1); S.x2.runes[t]=(S.x2.runes[t]||0)+1;
+  saveGame(true); renderX2(); if(typeof renderStats==='function') renderStats();
+}
+window.socketRune=socketRune; window.unsocketRune=unsocketRune;
+function renderRunes(){
+  if(!E$('x2RuneBox')) return;
+  const r=S.x2.runes;
+  E$('x2RuneTxt').textContent='보유: '+Object.entries(r).map(([k,v])=>RUNE_INFO[k][0]+v).join(' ');
+  const slotHtml=(slot,label)=>{
+    const arr=S.x2.sockets[slot];
+    let h='<div style="border:1px solid var(--line);padding:6px;background:var(--panel2);margin-bottom:4px;font-size:11px;"><b style="color:var(--cyan)">'+label+'</b> ';
+    for(let i=0;i<3;i++){
+      const t=arr[i];
+      h+= t? '<button style="font-size:11px;padding:3px 6px;border-color:var(--rift)" title="클릭하여 해제" onclick="unsocketRune(\''+slot+'\','+i+')">'+RUNE_INFO[t][0]+'</button> '
+           : '<span style="color:var(--mut)">[빈칸]</span> ';
+    }
+    h+='<span style="margin-left:6px">장착→</span> '+Object.keys(RUNE_INFO).map(t=>'<button style="font-size:10px;padding:2px 5px;'+((r[t]||0)<1?'opacity:.35':'')+'" onclick="socketRune(\''+slot+'\',\''+t+'\')">'+RUNE_INFO[t][0]+'</button>').join('');
+    return h+'</div>';
+  };
+  E$('x2RuneBox').innerHTML = slotHtml('weapon','🗡️ 무기 소켓')+slotHtml('armor','🛡️ 방어구 소켓');
+}
+/* ---------- 🎣 낚시 ---------- */
+function castFish(){
+  ensureX2();
+  const now=Date.now();
+  if(now-S.x2.fish.lastCast<20000){ log('<span class="c">🎣 '+Math.ceil((20000-(now-S.x2.fish.lastCast))/1000)+'초 후 다시 던질 수 있습니다.</span>'); return; }
+  S.x2.fish.lastCast=now;
+  const roll=Math.random();
+  if(roll<0.10){ const g=Math.floor(BAL.goldDrop(S.stage)*3); S.gold+=g; recGold(g); log('<span style="color:var(--mut)">🎣 낡은 장화... 팔아서 +'+fmt(g)+'G</span>'); }
+  else if(roll<0.60){ S.x2.fish.n++; S.x2.fish.total++; log('<span class="c">🎣 균열 송사리 낚음! (일반)</span>'); }
+  else if(roll<0.88){ S.x2.fish.r++; S.x2.fish.total++; log('<span class="g">🎣 차원 잉어 낚음! (희귀)</span>'); }
+  else if(roll<0.97){ S.x2.fish.l++; S.x2.fish.total++; log('<span class="gP">🎣 ✨균열 신어(神魚) 낚음! (전설)</span>'); }
+  else { const t=Object.keys(RUNE_INFO)[Math.floor(Math.random()*5)]; S.x2.runes[t]++; log('<span class="gP">🎣 💠룬 상자를 건졌다! '+RUNE_INFO[t][1]+' +1</span>'); }
+  saveGame(true); renderFish();
+}
+function cookFish(){
+  ensureX2();
+  if(S.x2.fish.n<5){ log('<span class="r">일반 물고기 5마리가 필요합니다.</span>'); return; }
+  S.x2.fish.n-=5;
+  S.x2.fish.buffUntil=Math.max(S.x2.fish.buffUntil,Date.now())+20*60000;
+  log('<span class="g">🍲 물고기 구이! 20분간 공격력 +25%</span>');
+  saveGame(true); renderFish();
+}
+function sellFish(){
+  ensureX2();
+  const f=S.x2.fish;
+  const g=Math.floor(BAL.goldDrop(S.stage)*(f.n*2+f.r*8+f.l*40));
+  if(g<=0){ log('<span class="r">팔 물고기가 없습니다.</span>'); return; }
+  S.gold+=g; recGold(g); f.n=0; f.r=0; f.l=0;
+  log('<span class="g">🐟 물고기 전량 판매! +'+fmt(g)+'G</span>');
+  saveGame(true); renderFish();
+}
+window.castFish=castFish; window.cookFish=cookFish; window.sellFish=sellFish;
+function renderFish(){
+  if(!E$('x2FishBox')) return;
+  const f=S.x2.fish;
+  const buff=Date.now()<f.buffUntil?Math.ceil((f.buffUntil-Date.now())/60000)+'분 남음':'없음';
+  E$('x2FishBox').innerHTML =
+    '<div class="chips"><span class="chip">🐟일반 <b>'+f.n+'</b></span><span class="chip">🐠희귀 <b>'+f.r+'</b></span><span class="chip">✨전설 <b>'+f.l+'</b></span><span class="chip">🍲버프: <b>'+buff+'</b></span></div>'
+    +'<div class="row"><div class="info">균열 호수에 낚싯대 던지기<small>20초 쿨타임 · 낮은 확률로 💠룬 상자!</small></div>'
+    +'<div style="display:flex;gap:4px;"><button onclick="castFish()">🎣 던지기</button><button class="gold-btn" onclick="cookFish()">🍲 요리(5)</button><button onclick="sellFish()">판매</button></div></div>';
+}
+/* ---------- 🗓️ 요일 던전 ---------- */
+const DAY_DGN=[
+  {n:'일요일 잭팟 던전', d:'랜덤 잭팟!'},{n:'월요일 골드 광산', d:'골드 대량'},{n:'화요일 강화석 채굴장', d:'강화석 대량'},
+  {n:'수요일 조각 균열', d:'균열의 조각'},{n:'목요일 룬 유적', d:'랜덤 룬 2개'},{n:'금요일 재료 창고', d:'펫 재료'},{n:'토요일 경험의 방', d:'경험치 대량'}];
+function enterDayDgn(){
+  ensureX2();
+  const today=new Date().toDateString();
+  if(S.x2.dailyDgn.last===today){ log('<span class="y">오늘의 요일 던전은 이미 클리어했습니다.</span>'); return; }
+  S.x2.dailyDgn.last=today;
+  const d=new Date().getDay();
+  const base=BAL.goldDrop(S.stage);
+  switch(d){
+    case 1:{ const g=Math.floor(base*60*goldMult()); S.gold+=g; recGold(g); log('<span class="g">🗓️ 골드 광산 클리어! +'+fmt(g)+'G</span>'); break; }
+    case 2:{ S.stones=(S.stones||0)+25; log('<span class="g">🗓️ 채굴장 클리어! 강화석 +25</span>'); break; }
+    case 3:{ S.shards=(S.shards||0)+12; log('<span class="g">🗓️ 조각 균열 클리어! 조각 +12</span>'); break; }
+    case 4:{ for(let i=0;i<2;i++){ const t=Object.keys(RUNE_INFO)[Math.floor(Math.random()*5)]; S.x2.runes[t]++; } log('<span class="g">🗓️ 룬 유적 클리어! 랜덤 룬 +2</span>'); break; }
+    case 5:{ const mats=['슬라임 젤리','박쥐 날개','늑대 송곳니']; const m=mats[Math.floor(Math.random()*3)]; S.inv[m]=(S.inv[m]||0)+5; log('<span class="g">🗓️ 재료 창고 클리어! '+m+' +5</span>'); break; }
+    case 6:{ gainExp(Math.floor(BAL.expDrop(S.stage)*80)); log('<span class="g">🗓️ 경험의 방 클리어! 경험치 대량!</span>'); break; }
+    default:{ const r=Math.random();
+      if(r<0.5){ const g=Math.floor(base*100*goldMult()); S.gold+=g; recGold(g); log('<span class="gP">🗓️ 잭팟! +'+fmt(g)+'G</span>'); }
+      else if(r<0.8){ S.shards=(S.shards||0)+25; log('<span class="gP">🗓️ 잭팟! 조각 +25</span>'); }
+      else { const t=Object.keys(RUNE_INFO)[Math.floor(Math.random()*5)]; S.x2.runes[t]+=3; log('<span class="gP">🗓️ 대박 잭팟! '+RUNE_INFO[t][1]+' +3</span>'); } }
+  }
+  try{ if(S.ext) S.ext.seasonExp=(S.ext.seasonExp||0)+15; }catch(e){}
+  saveGame(true); renderDayDgn(); renderAll();
+}
+window.enterDayDgn=enterDayDgn;
+function renderDayDgn(){
+  if(!E$('x2DgnBox')) return;
+  const d=new Date().getDay(); const info=DAY_DGN[d];
+  const done=S.x2.dailyDgn.last===new Date().toDateString();
+  E$('x2DgnTxt').textContent='(하루 1회)';
+  E$('x2DgnBox').innerHTML='<div class="row"><div class="info">🗓️ 오늘: <b>'+info.n+'</b><small>보상: '+info.d+'</small></div>'
+    +'<button '+(done?'disabled':'')+' onclick="enterDayDgn()">'+(done?'클리어✓':'입장')+'</button></div>';
+}
+/* ---------- 🐕 펫 원정 ---------- */
+function startExped(){
+  ensureX2();
+  const petCnt=Object.keys(S.pets||{}).length;
+  if(petCnt<1){ log('<span class="r">펫이 최소 1마리 필요합니다.</span>'); return; }
+  if(Date.now()<S.x2.exped.until){ log('<span class="y">이미 원정 중입니다.</span>'); return; }
+  S.x2.exped.until=Date.now()+30*60000; S.x2.exped.pets=Math.min(3,petCnt);
+  log('<span class="c">🐕 펫 '+S.x2.exped.pets+'마리가 30분 원정을 떠났습니다!</span>');
+  saveGame(true); renderExped();
+}
+function claimExped(){
+  ensureX2();
+  if(!S.x2.exped.until||Date.now()<S.x2.exped.until){ log('<span class="y">아직 원정이 끝나지 않았습니다.</span>'); return; }
+  const p=S.x2.exped.pets||1;
+  const g=Math.floor(BAL.goldDrop(S.stage)*25*p*goldMult());
+  S.gold+=g; recGold(g); S.stones=(S.stones||0)+3*p;
+  let extra='';
+  if(Math.random()<0.3*p/3){ const t=Object.keys(RUNE_INFO)[Math.floor(Math.random()*5)]; S.x2.runes[t]++; extra=' · 💠'+RUNE_INFO[t][1]+'!'; }
+  if(Math.random()<0.25){ S.shards=(S.shards||0)+3; extra+=' · 조각+3'; }
+  S.x2.exped.until=0;
+  log('<span class="g">🐕 원정 귀환! +'+fmt(g)+'G · 강화석+'+(3*p)+extra+'</span>');
+  saveGame(true); renderExped(); renderAll();
+}
+window.startExped=startExped; window.claimExped=claimExped;
+function renderExped(){
+  if(!E$('x2ExpBox')) return;
+  const e=S.x2.exped; const now=Date.now();
+  const petCnt=Object.keys(S.pets||{}).length;
+  let stat, btn;
+  if(e.until&&now<e.until){ stat='원정 중... '+Math.ceil((e.until-now)/60000)+'분 남음 ('+e.pets+'마리)'; btn='<button disabled>탐사 중</button>'; }
+  else if(e.until&&now>=e.until){ stat='🎁 원정 완료! 보상을 수령하세요'; btn='<button class="gold-btn" onclick="claimExped()">보상 수령!</button>'; }
+  else { stat='보유 펫 '+petCnt+'마리 (최대 3마리 파견 · 30분)'; btn='<button onclick="startExped()">원정 보내기</button>'; }
+  E$('x2ExpBox').innerHTML='<div class="row"><div class="info">'+stat+'<small>보상: 골드·강화석 + 확률로 룬·조각</small></div>'+btn+'</div>';
+}
+/* ---------- 🌟 장비 초월 ---------- */
+function transcend(id){
+  ensureX2();
+  const e=(S.equips||[]).find(x=>x.id===id); if(!e) return;
+  if(e.dev){ log('<span class="r">개발자 장비는 초월할 수 없습니다.</span>'); return; }
+  if((e.enh||0)<10){ log('<span class="r">+10강 장비만 초월할 수 있습니다.</span>'); return; }
+  const awk=e.awk||0;
+  if(awk>=3){ log('<span class="y">이미 최대 초월(3단)입니다.</span>'); return; }
+  const shardCost=30*(awk+1), goldCost=Math.floor(BAL.goldDrop(S.stage)*200*(awk+1));
+  if((S.shards||0)<shardCost||S.gold<goldCost){ log('<span class="r">초월 재료 부족 (조각 '+shardCost+' · '+fmt(goldCost)+'G)</span>'); return; }
+  S.shards-=shardCost; S.gold-=goldCost;
+  e.awk=awk+1;
+  log('<span class="gP">🌟 ['+esc(e.name)+'] '+e.awk+'단 초월! 성능 2배!!</span>');
+  try{ if(typeof showToast==='function') showToast('🌟 초월 성공!','gacha',2500); }catch(err){}
+  saveGame(true); renderTrans(); renderAll();
+}
+window.transcend=transcend;
+function renderTrans(){
+  if(!E$('x2TransBox')) return;
+  const cands=(S.equips||[]).filter(e=>!e.dev&&(e.enh||0)>=10&&(e.awk||0)<3&&(e.id===S.weapon||e.id===S.armor));
+  E$('x2TransBox').innerHTML = cands.length? cands.map(e=>{
+    const awk=e.awk||0, sc=30*(awk+1), gc=Math.floor(BAL.goldDrop(S.stage)*200*(awk+1));
+    return '<div class="row"><div class="info"><span class="'+(GRADE_CLS[e.grade]||'')+'">'+esc(e.name)+'</span> +10강 '+(awk?('🌟'.repeat(awk)):'')+'<small>비용: 조각 '+sc+' · '+fmt(gc)+'G → 성능 ×2</small></div>'
+      +'<button class="gold-btn" onclick="transcend('+e.id+')">🌟 초월</button></div>';
+  }).join('') : '<div class="notice" style="margin-top:0">장착 중인 +10강 장비가 있어야 초월할 수 있습니다.</div>';
+}
+/* ---------- 🤖 자동 전투 ---------- */
+function togAutoX(k){ ensureX2(); S.x2.auto[k]=!S.x2.auto[k]; saveGame(true); renderAuto(); }
+window.togAutoX=togAutoX;
+function renderAuto(){
+  if(!E$('x2AutoBox')) return;
+  const a=S.x2.auto;
+  E$('x2AutoBox').innerHTML=
+    '<div class="row"><div class="info">스킬 자동 사용<small>쿨타임이 돌면 직업 스킬을 자동 발동</small></div><button onclick="togAutoX(\'skill\')" style="'+(a.skill?'border-color:var(--green);color:var(--green)':'')+'">'+(a.skill?'ON':'OFF')+'</button></div>'
+   +'<div class="row"><div class="info">물약 자동 구매<small>물약 효과가 끝나면 골드로 자동 재구매</small></div><button onclick="togAutoX(\'potion\')" style="'+(a.potion?'border-color:var(--green);color:var(--green)':'')+'">'+(a.potion?'ON':'OFF')+'</button></div>';
+}
+setInterval(function(){ try{
+  if(!ensureX2()) return;
+  if(S.x2.auto.skill && typeof currentSkills==='function'){
+    const now=Date.now();
+    for(const s of currentSkills()){
+      if(now >= ((S.skillCd&&S.skillCd[s.id])||0)){ useSkill(s.id); break; }
+    }
+  }
+  if(S.x2.auto.potion && Date.now()>(S.potionUntil||0) && typeof buyPotion==='function'){ buyPotion(); }
+}catch(e){} }, 1500);
+/* ---------- ⚔️ PVP 모의 대전 ---------- */
+async function pvpFight(){
+  ensureX2();
+  const myPow=(typeof totalPower==='function')?totalPower():playerATK()*3;
+  if(!isFinite(myPow)){ log('<span class="r">개발자 장비로는 대전할 수 없습니다.</span>'); return; }
+  let opName='균열의 도전자', opPow=Math.floor(myPow*(0.7+Math.random()*0.7));
+  try{
+    if(typeof NET!=='undefined'&&NET.isOnline()){
+      const r=await NET.req('/rank/list',{});
+      if(r&&r.ok&&r.ranks&&r.ranks.length){
+        const cand=r.ranks.filter(x=>x.nick!==S.nickname&&isFinite(x.power)&&x.power>0);
+        if(cand.length){ const o=cand[Math.floor(Math.random()*Math.min(cand.length,20))]; opName=o.nick; opPow=o.power; }
+      }
+    }
+  }catch(e){}
+  const myRoll=myPow*(0.85+Math.random()*0.3), opRoll=opPow*(0.85+Math.random()*0.3);
+  const win=myRoll>=opRoll;
+  if(win){
+    S.x2.pvp.w++; S.x2.pvp.streak++; S.x2.pvp.best=Math.max(S.x2.pvp.best,S.x2.pvp.streak);
+    S.x2.pvp.pts+=3;
+    const g=Math.floor(BAL.goldDrop(S.stage)*15*goldMult()); S.gold+=g; recGold(g);
+    log('<span class="g">⚔️ ['+esc(String(opName))+'] 상대로 승리! +'+fmt(g)+'G · 승점+3 (연승 '+S.x2.pvp.streak+')</span>');
+  } else {
+    S.x2.pvp.l++; S.x2.pvp.streak=0; S.x2.pvp.pts+=1;
+    log('<span class="r">⚔️ ['+esc(String(opName))+'] 상대로 패배... 승점+1</span>');
+  }
+  if(S.x2.pvp.pts>=30){ S.x2.pvp.pts-=30; S.shards=(S.shards||0)+10; log('<span class="gP">🏆 승점 30 달성! 균열의 조각 +10</span>'); }
+  try{ if(S.ext) S.ext.seasonExp=(S.ext.seasonExp||0)+5; }catch(e){}
+  saveGame(true); renderPvp(); renderAll();
+}
+window.pvpFight=pvpFight;
+function renderPvp(){
+  if(!E$('x2PvpBox')) return;
+  const p=S.x2.pvp;
+  E$('x2PvpTxt').textContent=p.w+'승 '+p.l+'패 · 최고 '+p.best+'연승';
+  E$('x2PvpBox').innerHTML='<div class="row"><div class="info">전투력 기반 모의 대결<small>온라인이면 실제 랭커 데이터와 대결! 승점 '+p.pts+'/30 → 조각 10</small></div>'
+    +'<button onclick="pvpFight()">⚔️ 대전!</button></div>';
+}
+/* ---------- 📆 이벤트 달력 ---------- */
+const CAL_MILES=[{d:3,shards:5,gold:30},{d:7,shards:12,gold:80},{d:14,shards:25,gold:200},{d:30,shards:60,gold:500}];
+function calClaim(d){
+  ensureX2();
+  const m=CAL_MILES.find(x=>x.d===d); if(!m) return;
+  if(S.x2.cal.claimed[d]) return;
+  if(S.x2.cal.days<d){ log('<span class="r">누적 접속 '+d+'일이 필요합니다.</span>'); return; }
+  S.x2.cal.claimed[d]=true;
+  const g=Math.floor(BAL.goldDrop(S.stage)*m.gold);
+  S.gold+=g; recGold(g); S.shards=(S.shards||0)+m.shards;
+  log('<span class="g">📆 누적 '+d+'일 보상! +'+fmt(g)+'G · 조각+'+m.shards+'</span>');
+  saveGame(true); renderCal();
+}
+window.calClaim=calClaim;
+function renderCal(){
+  if(!E$('x2CalBox')) return;
+  const c=S.x2.cal;
+  E$('x2CalTxt').textContent='누적 접속 '+c.days+'일';
+  E$('x2CalBox').innerHTML=CAL_MILES.map(m=>{
+    const done=!!c.claimed[m.d], can=c.days>=m.d&&!done;
+    return '<div class="row"><div class="info">누적 '+m.d+'일 접속<small>골드 + 조각'+m.shards+'</small></div>'
+      +'<button class="gold-btn" '+(can?'':'disabled')+' onclick="calClaim('+m.d+')">'+(done?'수령✓':(can?'받기!':c.days+'/'+m.d))+'</button></div>';
+  }).join('');
+}
+
+/* ---------- 통합 렌더 & 시동 ---------- */
+function renderX2(){
+  if(!ensureX2()) return;
+  injectUI();
+  const tab=E$('tab-ext');
+  if(!tab||!tab.classList.contains('on')) return;
+  renderTitles(); renderMobCodex(); renderRunes(); renderFish();
+  renderDayDgn(); renderExped(); renderTrans(); renderAuto(); renderPvp(); renderCal();
+}
+document.addEventListener('click', function(ev){
+  if(ev.target.closest('[data-tab="ext"]')) setTimeout(renderX2, 60);
+});
+setInterval(function(){ try{ renderX2(); }catch(e){} }, 2500);
+const boot2=setInterval(function(){
+  try{
+    if(typeof S!=='undefined'&&S){
+      clearInterval(boot2);
+      ensureX2(); injectUI();
+      if(typeof renderJobUI==='function') renderJobUI();
+      log('<span class="p">🌠 확장팩 2탄 로드! 신규 직업 6종 + 신규 콘텐츠 10종 추가!</span>');
+    }
+  }catch(e){}
+}, 600);
+})();
+</script>
 
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79"}' crossorigin="anonymous"></script>

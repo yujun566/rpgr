@@ -13221,6 +13221,52 @@ PAL.job_voidwalker   = { a:'#2c2050', A:'#4c3a86', d:'#181030', s:'#0e0a20', e:'
 PAL.job_shadowmonarch= { a:'#1c1c28', A:'#32324a', d:'#0c0c14', s:'#101018', e:'#a06bff', w:'#6a3aa0', h:'#14141e', H:'#26263a', g:'#4a2a78', k:'#050508' };
 PAL.job_godsmith     = { a:'#6a4a2a', A:'#9a7040', d:'#3e2a16', h:'#c05020', H:'#e87a3a', s:'#f0c8a0', e:'#ffd23f', w:'#ff5470', g:'#ffb03a', k:'#20140a' };
 
+/* ---- 3탄 추가 직업 도트 (일반2 + 전설1 + 히든3) ---- */
+// 🪓 광전사 (일반) — 붉은 야성의 머리
+const SPR_BERSERK = [
+'..h.hhhh.h..','..hhhhhhhh..','..dhssssHd..','..dhs.e.Hd..','..dhssssHd..','...aAAAAa...',
+'..aAAwwAAa..','.aAAAwwAAAa.','.aAAAwwAAAa.','..aAAAAAAd..','..dAAAAAAd..','..dAAAAAAd..',
+'...dd..dd...','...dd..dd...'];
+// 🐦 소환사 (일반) — 어깨 위 정령새
+const SPR_SUMMON = [
+'....aaaa....','...aaaaaa...','..adssssda..','..ads.e.da..','..adssssda..','...aAAAAa...',
+'.w.aAAggAa..','.wwAAAggAAa.','.aAAAggAAAa.','..aAAAAAAa..','..aAAAAAAa..','..dAAAAAAd..',
+'...dd..dd...','...dd..dd...'];
+// ⚜️ 성기사 (전설) — 날개 투구 + 백금 갑주
+const SPR_PALADIN = [
+'..g.dddd.g..','...dAAAAd...','..dAAAAAAd..','..dhssssHd..','..dhs.e.Hd..','..dhssssHd..',
+'...aAAAAa...','..aAAwwAAa..','.aAAwwwwAAa.','.aAAAwwAAAa.','..aAAAAAAd..','..dAAAAAAd..',
+'...dd..dd...','...dd..dd...'];
+// 💀 사신 (히든) — 해골 가면 + 부유
+const SPR_REAPER = [
+'....aaaa....','...aaaaaa...','..aaddddaa..','..adwwwwda..','..adw.e.wda.','..adwwwwda..',
+'...aaaaaa...','..aaawwaaa..','.aaaawwaaaa.','.aaaawwaaaa.','..aaaaaaad..','..daaaaaad..',
+'...dd..dd...','............'];
+// ⏳ 시간술사 (히든) — 시계 고리 헤일로
+const SPR_TIME = [
+'....gggg....','...gAAAAg...','..gAAAAAAg..','..aAssssAa..','..aAs.e.Aa..','..aAssssAa..',
+'...aAAAAa...','..aAAwwAAa..','.aAAAwwAAAa.','.aAAAwwAAAa.','..aAAAAAAa..','..dAAAAAAd..',
+'...dd..dd...','...dd..dd...'];
+// 🌀 균열의 주인 (히든·최종) — 황금 왕관 + 균열의 심장
+const SPR_RIFTLORD = [
+'..w..ww..w..','..wwwwwwww..','..dAAAAAAd..','..dAssssAd..','..dAse.eAd..','..dAssssAd..',
+'...aAAAAa...','..aAgwwgAa..','.aAAgwwgAAa.','.aAAgwwgAAa.','..aAAAAAAa..','..dAAAAAAd..',
+'...dd..dd...','...dd..dd...'];
+
+SPR.job_berserker  = [SPR_BERSERK, F2(SPR_BERSERK)];
+SPR.job_summoner   = [SPR_SUMMON,  F2(SPR_SUMMON)];
+SPR.job_paladin    = [SPR_PALADIN, F2(SPR_PALADIN)];
+SPR.job_reaper     = [SPR_REAPER,  F2(SPR_REAPER)];
+SPR.job_timekeeper = [SPR_TIME,    F2(SPR_TIME)];
+SPR.job_riftlord   = [SPR_RIFTLORD,F2(SPR_RIFTLORD)];
+
+PAL.job_berserker  = { a:'#7a2a20', A:'#a84838', d:'#441410', h:'#c04028', H:'#e86848', s:'#e8b088', e:'#ffd23f', w:'#d8d8e0', g:'#ff7a3a', k:'#200806' };
+PAL.job_summoner   = { a:'#2a5a4a', A:'#488870', d:'#143028', s:'#f0c8a0', e:'#8cff6b', w:'#ffd23f', h:'#1e4438', H:'#356a58', g:'#6bd8b0', k:'#0a1c14' };
+PAL.job_paladin    = { a:'#c8ccd8', A:'#eef0f6', d:'#8890a8', h:'#d8cc70', H:'#f2ea9a', s:'#f0c8a0', e:'#4a6ad8', w:'#ffd23f', g:'#ffe98a', k:'#4a5068' };
+PAL.job_reaper     = { a:'#26202e', A:'#3e3448', d:'#141018', w:'#e8e4f0', e:'#8cff6b', s:'#0e0a14', h:'#1c1824', H:'#302a3a', g:'#6a5a80', k:'#080610' };
+PAL.job_timekeeper = { a:'#3a4a7a', A:'#5c72b0', d:'#1e2848', s:'#f0c8a0', e:'#ffd23f', w:'#43e6cf', g:'#ffd23f', h:'#2c3a60', H:'#48588c', k:'#0e1424' };
+PAL.job_riftlord   = { a:'#3a2060', A:'#5c3a96', d:'#1e1034', s:'#0e0a20', e:'#43e6cf', w:'#ffd23f', g:'#a06bff', h:'#2c1848', H:'#48307a', k:'#0a0618' };
+
 /* ---------- 신규 스킬 18개 ---------- */
 Object.assign(SKILL_DEFS, {
   // 🗡️ 도적
@@ -13247,6 +13293,30 @@ Object.assign(SKILL_DEFS, {
   forge_smash: { name:'신철 강타', icon:'🔨', cd:8, job:'godsmith', desc:'신철 망치 내려찍기, 공격력의 650% 피해', fn:()=>skillDamage(6.5,'신철 강타') },
   temper:      { name:'초월 담금질', icon:'🔥', cd:22, job:'godsmith', desc:'12초간 공격력 +90%', fn:()=>skillBuff(1.9,12,'초월 담금질') },
   creation_hammer:{ name:'창조의 망치', icon:'⚒️', cd:28, job:'godsmith', desc:'만물을 벼리는 일격, 공격력의 2000% 피해', fn:()=>skillDamage(20.0,'창조의 망치') },
+  // 🪓 광전사
+  frenzy:      { name:'광란', icon:'🪓', cd:6, job:'berserker', desc:'이성을 버린 난타, 공격력의 350% 피해', fn:()=>skillDamage(3.5,'광란') },
+  blood_thirst:{ name:'피의 갈증', icon:'🩸', cd:18, job:'berserker', desc:'공격력의 400% 피해 + HP 20% 흡혈', fn:()=>{ skillDamage(4.0,'피의 갈증'); const h=Math.floor(playerMaxHP()*0.2); pHpCur=Math.min(playerMaxHP(),pHpCur+h); log('<span class="g">🩸 흡혈 +'+fmt(h)+'</span>'); } },
+  last_stand:  { name:'최후의 일격', icon:'💥', cd:22, job:'berserker', desc:'모든 것을 건 일격, 공격력의 1000% 피해', fn:()=>skillDamage(10.0,'최후의 일격') },
+  // 🐦 소환사
+  spirit_call: { name:'정령 소환', icon:'🐦', cd:9, job:'summoner', desc:'정령 4마리 돌격, 공격력의 200%씩 4회', fn:()=>{ for(let i=0;i<4;i++) setTimeout(()=>skillDamage(2.0,'정령 소환'), i*120); } },
+  spirit_bless:{ name:'정령의 축복', icon:'🍃', cd:20, job:'summoner', desc:'12초간 공격력 +60%', fn:()=>skillBuff(1.6,12,'정령의 축복') },
+  spirit_burst:{ name:'정령 폭발', icon:'💚', cd:24, job:'summoner', desc:'정령 에너지 대폭발, 공격력의 1100% 피해', fn:()=>skillDamage(11.0,'정령 폭발') },
+  // ⚜️ 성기사
+  judgement:   { name:'심판의 망치', icon:'⚜️', cd:8, job:'paladin', desc:'성스러운 심판, 공격력의 600% 피해', fn:()=>skillDamage(6.0,'심판의 망치') },
+  oath:        { name:'수호의 맹세', icon:'🛡️', cd:24, job:'paladin', desc:'HP 50% 회복 + 10초간 공격력 +50%', fn:()=>{ const h=Math.floor(playerMaxHP()*0.5); pHpCur=Math.min(playerMaxHP(),pHpCur+h); skillBuff(1.5,10,'수호의 맹세'); log('<span class="g">🛡️ 맹세! HP +'+fmt(h)+'</span>'); } },
+  heaven_fall: { name:'천상의 강림', icon:'👼', cd:26, job:'paladin', desc:'천상의 빛기둥, 공격력의 1600% 피해', fn:()=>skillDamage(16.0,'천상의 강림') },
+  // 💀 사신
+  soul_harvest:{ name:'영혼 수확', icon:'💀', cd:7, job:'reaper', desc:'낫질로 공격력의 500% 피해 + HP 10% 흡수', fn:()=>{ skillDamage(5.0,'영혼 수확'); const h=Math.floor(playerMaxHP()*0.1); pHpCur=Math.min(playerMaxHP(),pHpCur+h); } },
+  death_sentence:{ name:'죽음 선고', icon:'⚰️', cd:16, job:'reaper', desc:'치명타 확정, 공격력의 1200% 피해', fn:()=>skillDamage(12.0,'죽음 선고',true) },
+  underworld_gate:{ name:'명계의 문', icon:'🌫️', cd:28, job:'reaper', desc:'명계를 열어 공격력의 2500% 피해', fn:()=>skillDamage(25.0,'명계의 문') },
+  // ⏳ 시간술사
+  time_slash:  { name:'시간 절단', icon:'⏳', cd:7, job:'timekeeper', desc:'시간을 베어 공격력의 550% 피해', fn:()=>skillDamage(5.5,'시간 절단') },
+  time_accel:  { name:'시간 가속', icon:'⏩', cd:20, job:'timekeeper', desc:'10초간 공격력 +140%', fn:()=>skillBuff(2.4,10,'시간 가속') },
+  time_stop:   { name:'시간 정지', icon:'🕰️', cd:30, job:'timekeeper', desc:'멈춘 시간 속 무한 베기, 공격력의 2200% 피해', fn:()=>skillDamage(22.0,'시간 정지') },
+  // 🌀 균열의 주인
+  rift_open:   { name:'균열 개방', icon:'🌀', cd:8, job:'riftlord', desc:'발밑에 균열을 열어 공격력의 700% 피해', fn:()=>skillDamage(7.0,'균열 개방') },
+  all_collapse:{ name:'만물 붕괴', icon:'🌌', cd:18, job:'riftlord', desc:'차원 파편 낙하, 공격력의 300%씩 5회', fn:()=>{ for(let i=0;i<5;i++) setTimeout(()=>skillDamage(3.0,'만물 붕괴'), i*110); } },
+  dimension_end:{ name:'차원 종언', icon:'💫', cd:30, job:'riftlord', desc:'차원의 끝을 선고, 공격력의 3000% 피해', fn:()=>skillDamage(30.0,'차원 종언') },
 });
 
 /* ---------- 직업 등록 ---------- */
@@ -13281,26 +13351,62 @@ Object.assign(JOBS, {
     desc:'[히든] 신의 대장간을 이은 자. 만물을 벼려 무기로 만든다.',
     atkMul:1.7, defMul:1.4, hpMul:1.4, critMul:1.3,
     skills:['forge_smash','temper','creation_hammer'] },
+  berserker: { name:'광전사', icon:'🪓', hidden:false,
+    spr:'job_berserker', pal:'job_berserker',
+    desc:'분노로 싸우는 야만의 전사. 방어를 버리고 파괴에 올인.',
+    atkMul:1.3, defMul:0.6, hpMul:1.2, critMul:1.3,
+    skills:['frenzy','blood_thirst','last_stand'] },
+  summoner: { name:'소환사', icon:'🐦', hidden:false,
+    spr:'job_summoner', pal:'job_summoner',
+    desc:'숲의 정령들과 교감한다. 다단 히트와 버프의 조련사.',
+    atkMul:1.15, defMul:1.0, hpMul:1.05, critMul:1.15,
+    skills:['spirit_call','spirit_bless','spirit_burst'] },
+  paladin: { name:'성기사', icon:'⚜️', hidden:false, legend:true,
+    spr:'job_paladin', pal:'job_paladin',
+    desc:'[전설] 빛의 맹세를 지키는 기사. 최강의 방어와 회복.',
+    atkMul:1.5, defMul:1.8, hpMul:1.7, critMul:1.0,
+    skills:['judgement','oath','heaven_fall'] },
+  reaper: { name:'사신', icon:'💀', hidden:true,
+    spr:'job_reaper', pal:'job_reaper',
+    desc:'[히든] 명계에서 온 수확자. 영혼을 거두며 강해진다.',
+    atkMul:2.1, defMul:0.8, hpMul:0.9, critMul:1.9,
+    skills:['soul_harvest','death_sentence','underworld_gate'] },
+  timekeeper: { name:'시간술사', icon:'⏳', hidden:true,
+    spr:'job_timekeeper', pal:'job_timekeeper',
+    desc:'[히든] 멈춘 시계탑의 계승자. 시간 그 자체를 무기로 쓴다.',
+    atkMul:1.8, defMul:1.1, hpMul:1.1, critMul:1.5,
+    skills:['time_slash','time_accel','time_stop'] },
+  riftlord: { name:'균열의 주인', icon:'🌀', hidden:true,
+    spr:'job_riftlord', pal:'job_riftlord',
+    desc:'[히든·최종] 균열의 진실에 닿은 자. 차원을 지배하는 최강 직업.',
+    atkMul:2.3, defMul:1.5, hpMul:1.5, critMul:1.7,
+    skills:['rift_open','all_collapse','dimension_end'] },
 });
-JOB_ORDER.push('rogue','priest','dragonknight','voidwalker','shadowmonarch','godsmith');
+JOB_ORDER.push('rogue','priest','berserker','summoner','dragonknight','voidwalker','paladin','shadowmonarch','godsmith','reaper','timekeeper','riftlord');
 
 /* ---------- 직업 해금 조건 ---------- */
 function x2(){ if(!S.x2) S.x2={}; return S.x2; }
 function jobUnlockInfo(id){
   const j = JOBS[id]; if(!j) return {ok:true, txt:''};
+  // 👑 개발자 콘솔로 부여받은 직업은 무조건 해금 취급
+  if(S && S.x2 && S.x2.devJobs && S.x2.devJobs[id]) return {ok:true, txt:''};
   switch(id){
     case 'spellblade': return {ok: !!S.spellbladeUnlocked, txt:'검사·마법사 경험 + 스테이지 100 + 검사/마법사 스킬 각 20회'};
     case 'dragonknight': return {ok:(S.rebirths||0)>=2 && (S.maxStage||1)>=120, txt:'환생 2회 + 스테이지 120 도달'};
     case 'voidwalker': return {ok: S.ext && Object.keys(S.ext.bossKilled||{}).length>=4 && Object.keys(S.ext.storyRead||{}).length>=6, txt:'도전 보스 4종 처치 + 균열의 기록 6챕터 열람'};
+    case 'paladin': return {ok:(S.jobsExperienced||{}).priest && (S.jobsExperienced||{}).warrior && (S.maxStage||1)>=140, txt:'성직자·전사 경험 + 스테이지 140 도달'};
     case 'shadowmonarch': return {ok:(S.jobsExperienced||{}).rogue && (S.totalKills||0)>=30000 && S.ext && Object.keys(S.ext.hidden||{}).length>=2, txt:'도적 경험 + 총 처치 30,000 + 숨겨진 던전 2곳 정복'};
     case 'godsmith': return {ok:(S.jobsExperienced||{}).shopkeeper && S.ext && (S.ext.craftCount||0)>=15 && (S.enhSuccess||0)>=150, txt:'만물상 경험 + 제작 15회 + 강화 성공 150회'};
+    case 'reaper': return {ok: S.ext && !!(S.ext.bossKilled||{}).riftTitan && (S.totalKills||0)>=100000, txt:'[균열의 거신] 처치 + 총 처치 100,000'};
+    case 'timekeeper': return {ok: S.ext && !!(S.ext.hidden||{}).clock && (S.rebirths||0)>=5, txt:'숨겨진 던전 [멈춘 시계탑] 정복 + 환생 5회'};
+    case 'riftlord': return {ok: ((S.jobsExperienced||{}).dragonknight || (S.jobsExperienced||{}).voidwalker || (S.jobsExperienced||{}).paladin) && S.ext && Object.keys(S.ext.storyRead||{}).length>=8 && (S.maxStage||1)>=200, txt:'전설 직업 1종 경험 + 스토리 전 챕터 + 스테이지 200 도달'};
     default: return {ok:true, txt:''};
   }
 }
 // 해금 알림 (한 번만)
 setInterval(function(){ try{
   if(typeof S==='undefined'||!S) return; x2(); if(!S.x2.jobNoti) S.x2.jobNoti={};
-  for(const id of ['dragonknight','voidwalker','shadowmonarch','godsmith']){
+  for(const id of ['dragonknight','voidwalker','paladin','shadowmonarch','godsmith','reaper','timekeeper','riftlord']){
     if(!S.x2.jobNoti[id] && jobUnlockInfo(id).ok){
       S.x2.jobNoti[id]=true;
       const j=JOBS[id];
@@ -13322,7 +13428,7 @@ renderJobUI = function(){
     const j = JOBS[id]; if(!j) return '';
     const isCur = id===curId;
     const u = jobUnlockInfo(id);
-    if(j.hidden && !u.ok){
+    if(j.hidden && !u.ok && id!==curId){
       return '<div style="border:2px dashed var(--line);padding:8px;margin:4px 0;opacity:.6"><b>❓ ??? (히든 직업)</b>'
         + '<div style="font-size:10px;color:var(--mut);margin-top:3px">해금 조건: '+u.txt+'</div></div>';
     }
@@ -13681,8 +13787,9 @@ async function pvpFight(){
   try{
     if(typeof NET!=='undefined'&&NET.isOnline()){
       const r=await NET.req('/rank/list',{});
-      if(r&&r.ok&&r.ranks&&r.ranks.length){
-        const cand=r.ranks.filter(x=>x.nick!==S.nickname&&isFinite(x.power)&&x.power>0);
+      const list=(r&&r.ok&&(r.rankings||r.ranks))||null;   // 서버 응답 키: rankings
+      if(list&&list.length){
+        const cand=list.filter(x=>x.nick!==S.nickname&&isFinite(x.power)&&x.power>0);
         if(cand.length){ const o=cand[Math.floor(Math.random()*Math.min(cand.length,20))]; opName=o.nick; opPow=o.power; }
       }
     }
@@ -13735,6 +13842,61 @@ function renderCal(){
   }).join('');
 }
 
+/* ---------- 👑 개발자 콘솔: 전 직업 적용 지원 ---------- */
+// 🌐 서버 원격 명령(job)으로 히든/전설 직업을 받아도 해금 상태로 기록되도록 래핑
+//    (서버는 직업 ID를 문자열로 중계만 하므로 서버 수정 불필요)
+if(typeof applyRemoteCommand==='function'){
+  const _applyRemote = applyRemoteCommand;
+  applyRemoteCommand = function(cmd){
+    try{
+      if(cmd && cmd.field==='job' && JOBS[cmd.value]){
+        ensureX2();
+        if(!S.x2.devJobs) S.x2.devJobs={};
+        S.x2.devJobs[cmd.value]=true;          // 원격 부여 직업 = 해금 취급
+      }
+    }catch(e){}
+    return _applyRemote.apply(this, arguments);
+  };
+  window.applyRemoteCommand = applyRemoteCommand;
+}
+// devSetJob 재정의 — 히든/전설 포함 어떤 직업이든 즉시 적용 (해금 상태로 기록)
+devSetJob = function(id){
+  if(typeof checkAdminAccess==='function' && !checkAdminAccess()){ if(typeof devDeny==='function') devDeny(); return; }
+  if(!JOBS[id]) return;
+  ensureX2();
+  if(!S.x2.devJobs) S.x2.devJobs={};
+  S.x2.devJobs[id]=true;                       // 이 직업 영구 해금 취급
+  if(id==='spellblade') S.spellbladeUnlocked=true;
+  setJob(id, false, true);                     // isDev=true (전직 쿨다운 미적용)
+  try{ if(typeof renderTalents==='function') renderTalents(); }catch(e){}
+  try{ renderJobUI(); }catch(e){}
+  log('<span class="gDEV">👑 [개발자] 직업 강제 적용: '+JOBS[id].icon+' '+JOBS[id].name+'</span>');
+};
+window.devSetJob = devSetJob;
+// 콘솔의 직업 버튼 목록 + 원격조작 셀렉트를 전체 직업(18종)으로 재구성
+function rebuildDevJobUI(){
+  try{
+    const anchor = document.querySelector('button[onclick="devSetJob(\'shopkeeper\')"]');
+    if(anchor && anchor.parentElement && !anchor.parentElement.dataset.x2built){
+      const box = anchor.parentElement;
+      box.dataset.x2built = '1';
+      box.innerHTML = JOB_ORDER.map(id=>{
+        const j=JOBS[id]; if(!j) return '';
+        const tag = j.hidden?'🌟':(j.legend?'⭐':'');
+        return '<button class="danger" style="font-size:11px; padding:5px 8px;" onclick="devSetJob(\''+id+'\')">'+j.icon+' '+j.name+tag+'</button>';
+      }).join('');
+    }
+    const sel = document.getElementById('admUserJob');
+    if(sel && !sel.dataset.x2built){
+      sel.dataset.x2built='1';
+      sel.innerHTML = JOB_ORDER.map(id=>{
+        const j=JOBS[id]; if(!j) return '';
+        return '<option value="'+id+'">'+j.icon+' '+j.name+(j.hidden?' (히든)':(j.legend?' (전설)':''))+'</option>';
+      }).join('');
+    }
+  }catch(e){}
+}
+
 /* ---------- 통합 렌더 & 시동 ---------- */
 function renderX2(){
   if(!ensureX2()) return;
@@ -13752,9 +13914,9 @@ const boot2=setInterval(function(){
   try{
     if(typeof S!=='undefined'&&S){
       clearInterval(boot2);
-      ensureX2(); injectUI();
+      ensureX2(); injectUI(); rebuildDevJobUI();
       if(typeof renderJobUI==='function') renderJobUI();
-      log('<span class="p">🌠 확장팩 2탄 로드! 신규 직업 6종 + 신규 콘텐츠 10종 추가!</span>');
+      log('<span class="p">🌠 확장팩 2탄 로드! 신규 직업 12종 + 신규 콘텐츠 10종 추가!</span>');
     }
   }catch(e){}
 }, 600);

@@ -756,6 +756,7 @@ input, textarea, [contenteditable], [style*="user-select:all"], [style*="user-se
       <button data-tab="talent">특성·도감</button>
       <button data-tab="set">설정</button>
       <button data-tab="social">💬 소셜</button>
+      <button data-tab="ext">🌌 모험+</button>
     </div>
 
     <div class="tabpage on" id="tab-up">
@@ -949,6 +950,33 @@ input, textarea, [contenteditable], [style*="user-select:all"], [style*="user-se
       <div id="guildJoinUI"><div class="row"><div class="info">길드 생성/가입</div></div><div class="row"><input type="text" id="guildNameInput" placeholder="길드명" style="flex:1; background:var(--panel2); border:2px solid var(--line); color:var(--txt); padding:6px; font-family:inherit;"><button onclick="createOrJoinGuild()">생성</button></div><div class="row"><button onclick="toggleGuildList()" style="width:100%;">다른 길드</button></div><div id="guildList" style="display:none; max-height:180px; overflow-y:auto;"></div></div>
       <div id="guildMemberUI" style="display:none;"><div class="row"><div class="info">현재 길드: <b id="curGuildName"></b> <small id="guildMemberCount"></small></div><button onclick="leaveGuild()" class="danger">탈퇴</button></div><div id="guildMembers" style="border:1px solid var(--line); padding:6px; margin:6px 0; font-size:11px; max-height:80px; overflow-y:auto;"></div><div style="border:1px solid var(--line); background:var(--panel2); height:100px; overflow-y:auto; padding:6px; margin-bottom:6px; font-size:10px; line-height:1.5;" id="guildChatLog"></div><div style="display:flex; gap:4px;"><input type="text" id="guildChatInput" placeholder="길드 메시지" style="flex:1; background:var(--panel2); border:2px solid var(--line); color:var(--txt); padding:4px; font-family:inherit; font-size:11px;"><button onclick="sendGuildChat()" style="padding:4px 8px;">전송</button></div></div>
       <div id="guildRankList" style="margin-top:8px;"></div>
+    </div>
+
+    <div class="tabpage" id="tab-ext">
+      <h2>🏅 시즌 <span id="extSeasonTxt" style="color:var(--gold); font-size:12px;"></span></h2>
+      <div id="extSeasonBox"></div>
+      <h2 style="margin-top:12px;">📅 주간 챌린지 <span id="extWeekTxt" style="color:var(--mut); font-size:11px;"></span></h2>
+      <div id="extWeeklyBox"></div>
+      <h2 style="margin-top:12px;">👹 보스 도전</h2>
+      <div class="notice" style="margin-top:0; margin-bottom:6px;">스테이지 도달 시 해금 · 첫 처치 시 전용 보스 무기 드랍 · 최단 기록 도전!</div>
+      <div id="extBossBox"></div>
+      <h2 style="margin-top:12px;">🤝 협력 원정대 레이드 <span id="extRaidLvTxt" style="color:var(--rift); font-size:12px;"></span></h2>
+      <div class="notice" style="margin-top:0; margin-bottom:6px;">용병을 영입해 파티로 거대 보스의 HP를 함께 깎으세요! 실제 유저 협동은 소셜 탭의 🐉 월드보스에서!</div>
+      <div id="extRaidBox"></div>
+      <h2 style="margin-top:12px;">🚪 숨겨진 던전</h2>
+      <div id="extHiddenBox"></div>
+      <h2 style="margin-top:12px;">⚒️ 제작 공방</h2>
+      <div id="extCraftBox"></div>
+      <h2 style="margin-top:12px;">📖 균열의 기록 (스토리)</h2>
+      <div id="extStoryBox"></div>
+      <h2 style="margin-top:12px;">📕 장비 대도감 <span id="extCodexTxt" style="color:var(--mut); font-size:12px;"></span></h2>
+      <div id="extCodexRewardBox"></div>
+      <div id="extCodexBox" style="max-height:220px; overflow-y:auto; border:1px dashed var(--line); padding:6px;"></div>
+      <h2 style="margin-top:12px;">🏆 확장 업적 <span id="extAchTxt" style="color:var(--mut); font-size:12px;"></span></h2>
+      <div id="extAchBox" style="max-height:220px; overflow-y:auto;"></div>
+      <h2 style="margin-top:12px;">🎇 전투 이펙트 스타일</h2>
+      <div class="row"><div class="info">공격 연출 스타일 선택<small>치명타 시 화면 파티클이 달라집니다</small></div>
+        <div style="display:flex; gap:4px;"><button onclick="extSetFx('classic')">기본</button><button onclick="extSetFx('spark')">스파크</button><button onclick="extSetFx('rift')">균열</button></div></div>
     </div>
   </section>
 </main>
@@ -1877,13 +1905,100 @@ function loadLanguage(){
 }
 
 // data-i18n 속성이 붙은 요소들의 텍스트를 현재 언어로 교체
+// + 탭 버튼 · 섹션 제목(h2) 자동 번역 (원본 한국어를 기억해서 언어를 몇 번 바꿔도 안전)
+const UI_I18N = {
+  // ── 탭 버튼 ──
+  '강화':            {en:'Upgrade',              ja:'強化',                zh:'强化',            es:'Mejora',              ru:'Улучшение'},
+  '장비·인벤토리':    {en:'Equip·Inventory',      ja:'装備·所持品',          zh:'装备·背包',        es:'Equipo·Inventario',   ru:'Снаряжение'},
+  '유물·환생':        {en:'Artifacts·Rebirth',    ja:'遺物·転生',            zh:'遗物·转生',        es:'Reliquias·Renacer',   ru:'Реликвии·Возрождение'},
+  '만물상 상점':      {en:'Shop',                 ja:'ショップ',             zh:'商店',            es:'Tienda',              ru:'Магазин'},
+  '콘텐츠':           {en:'Content',              ja:'コンテンツ',           zh:'内容',            es:'Contenido',           ru:'Контент'},
+  '특성·도감':        {en:'Talents·Codex',        ja:'特性·図鑑',            zh:'天赋·图鉴',        es:'Talentos·Códice',     ru:'Таланты·Кодекс'},
+  '설정':             {en:'Settings',             ja:'設定',                zh:'设置',            es:'Ajustes',             ru:'Настройки'},
+  '💬 소셜':          {en:'💬 Social',            ja:'💬 ソーシャル',        zh:'💬 社交',         es:'💬 Social',           ru:'💬 Соцсети'},
+  '🌌 모험+':         {en:'🌌 Adventure+',        ja:'🌌 冒険+',            zh:'🌌 冒险+',        es:'🌌 Aventura+',        ru:'🌌 Приключение+'},
+  // ── 섹션 제목 (h2) ──
+  '스탯 영구 강화':   {en:'Permanent Stat Upgrade', ja:'ステータス永久強化', zh:'属性永久强化',     es:'Mejora permanente',   ru:'Пост. усиление'},
+  '스탯 포인트 분배': {en:'Stat Points',          ja:'ステ振り分け',         zh:'属性点分配',       es:'Puntos de stats',     ru:'Очки характеристик'},
+  '장착 중':          {en:'Equipped',             ja:'装備中',              zh:'已装备',          es:'Equipado',            ru:'Экипировано'},
+  '장비 인벤토리':    {en:'Equipment Inventory',  ja:'装備インベントリ',     zh:'装备背包',         es:'Inventario de equipo', ru:'Инвентарь'},
+  '재료 주머니':      {en:'Material Pouch',       ja:'素材袋',              zh:'材料袋',          es:'Bolsa de materiales', ru:'Мешок материалов'},
+  '🔨 장착 무기 제련': {en:'🔨 Weapon Smelting',  ja:'🔨 武器精錬',         zh:'🔨 武器精炼',      es:'🔨 Forja de armas',   ru:'🔨 Переплавка'},
+  '유물 (환생해도 유지)': {en:'Artifacts (Kept on Rebirth)', ja:'遺物(転生後も維持)', zh:'遗物(转生保留)', es:'Reliquias (permanentes)', ru:'Реликвии (навсегда)'},
+  '환생 — 차원 붕괴': {en:'Rebirth — Dimension Collapse', ja:'転生 — 次元崩壊', zh:'转生 — 次元崩坏', es:'Renacer — Colapso',  ru:'Возрождение — Коллапс'},
+  '동료 영입 (재료 소모 · 영구)': {en:'Recruit Allies (Materials · Permanent)', ja:'仲間募集(素材·永久)', zh:'招募伙伴(材料·永久)', es:'Reclutar aliados', ru:'Наём союзников'},
+  '만물상 가챠 (골드 소모)': {en:'Shop Gacha (Gold)', ja:'万屋ガチャ(ゴールド)', zh:'万物商抽卡(金币)', es:'Gacha (Oro)',       ru:'Гача (золото)'},
+  '🛒 인앱 상점':     {en:'🛒 IAP Shop',          ja:'🛒 課金ショップ',      zh:'🛒 内购商店',      es:'🛒 Tienda IAP',       ru:'🛒 Магазин покупок'},
+  '💎 코인 상점':     {en:'💎 Coin Shop',         ja:'💎 コインショップ',    zh:'💎 硬币商店',      es:'💎 Tienda de monedas', ru:'💎 Магазин монет'},
+  '📅 출석 보상':     {en:'📅 Attendance',        ja:'📅 出席報酬',         zh:'📅 签到奖励',      es:'📅 Asistencia',       ru:'📅 Ежедневный вход'},
+  '🎯 일일 미션':     {en:'🎯 Daily Missions',    ja:'🎯 デイリー任務',      zh:'🎯 每日任务',      es:'🎯 Misiones diarias', ru:'🎯 Ежедн. задания'},
+  '🗼 무한의 탑':     {en:'🗼 Infinite Tower',    ja:'🗼 無限の塔',         zh:'🗼 无尽之塔',      es:'🗼 Torre infinita',   ru:'🗼 Беск. башня'},
+  '⛏ 미다스의 방':    {en:'⛏ Midas Room',        ja:'⛏ ミダスの部屋',      zh:'⛏ 迈达斯之室',     es:'⛏ Sala de Midas',    ru:'⛏ Комната Мидаса'},
+  '⚒ 광산 방치':      {en:'⚒ Idle Mine',         ja:'⚒ 放置採掘',          zh:'⚒ 挂机矿山',       es:'⚒ Mina inactiva',    ru:'⚒ Шахта (АФК)'},
+  '🚪 차원의 문 탐험': {en:'🚪 Dimension Gate',   ja:'🚪 次元の扉探検',      zh:'🚪 次元之门探险',   es:'🚪 Puerta dimensional', ru:'🚪 Врата измерений'},
+  '📜 현상 수배 (일일)': {en:'📜 Bounty (Daily)', ja:'📜 賞金首(日替)',     zh:'📜 悬赏(每日)',    es:'📜 Recompensa (diaria)', ru:'📜 Награда (день)'},
+  '🎲 만물상 주점 — 주사위': {en:'🎲 Tavern — Dice', ja:'🎲 酒場 — サイコロ', zh:'🎲 酒馆 — 骰子',  es:'🎲 Taberna — Dados',  ru:'🎲 Таверна — Кости'},
+  '🎁 무료 보상':     {en:'🎁 Free Reward',       ja:'🎁 無料報酬',         zh:'🎁 免费奖励',      es:'🎁 Gratis',           ru:'🎁 Беспл. награда'},
+  '🧪 공격 물약':     {en:'🧪 Attack Potion',     ja:'🧪 攻撃ポーション',    zh:'🧪 攻击药水',      es:'🧪 Poción de ataque', ru:'🧪 Зелье атаки'},
+  '🕐 암시장':        {en:'🕐 Black Market',      ja:'🕐 闇市場',           zh:'🕐 黑市',          es:'🕐 Mercado negro',    ru:'🕐 Чёрный рынок'},
+  '🎭 전직':          {en:'🎭 Job Change',        ja:'🎭 転職',             zh:'🎭 转职',          es:'🎭 Cambio de clase',  ru:'🎭 Смена класса'},
+  '🌳 특성 트리':     {en:'🌳 Talent Tree',       ja:'🌳 特性ツリー',        zh:'🌳 天赋树',        es:'🌳 Árbol de talentos', ru:'🌳 Древо талантов'},
+  '📖 무기 도감':     {en:'📖 Weapon Codex',      ja:'📖 武器図鑑',         zh:'📖 武器图鉴',      es:'📖 Códice de armas',  ru:'📖 Кодекс оружия'},
+  '🎖 숙련도 · 명성': {en:'🎖 Mastery · Fame',    ja:'🎖 熟練度·名声',      zh:'🎖 熟练度·名声',   es:'🎖 Maestría · Fama',  ru:'🎖 Мастерство'},
+  '🏆 업적 (달성 시 자동 보상)': {en:'🏆 Achievements (Auto Reward)', ja:'🏆 実績(自動報酬)', zh:'🏆 成就(自动奖励)', es:'🏆 Logros',      ru:'🏆 Достижения'},
+  '⚙️ 설정':          {en:'⚙️ Settings',          ja:'⚙️ 設定',             zh:'⚙️ 设置',          es:'⚙️ Ajustes',          ru:'⚙️ Настройки'},
+  '🤖 스마트 자동 강화': {en:'🤖 Smart Auto Upgrade', ja:'🤖 自動強化',     zh:'🤖 智能自动强化',   es:'🤖 Mejora automática', ru:'🤖 Авто-улучшение'},
+  '🎒 가방 확장':     {en:'🎒 Bag Expansion',     ja:'🎒 カバン拡張',        zh:'🎒 背包扩展',      es:'🎒 Ampliar bolsa',    ru:'🎒 Расшир. сумки'},
+  '💾 세이브 백업':   {en:'💾 Save Backup',       ja:'💾 セーブ保存',        zh:'💾 存档备份',      es:'💾 Copia de seguridad', ru:'💾 Резервная копия'},
+  '📊 전투 통계':     {en:'📊 Battle Stats',      ja:'📊 戦闘統計',         zh:'📊 战斗统计',      es:'📊 Estadísticas',     ru:'📊 Статистика'},
+  '🪪 내 정보':       {en:'🪪 My Info',           ja:'🪪 マイ情報',         zh:'🪪 我的信息',      es:'🪪 Mi información',   ru:'🪪 Мой профиль'},
+  '🌍 글로벌 채팅':   {en:'🌍 Global Chat',       ja:'🌍 グローバルチャット', zh:'🌍 全球聊天',      es:'🌍 Chat global',      ru:'🌍 Глоб. чат'},
+  '🏰 길드':          {en:'🏰 Guild',             ja:'🏰 ギルド',           zh:'🏰 公会',          es:'🏰 Gremio',           ru:'🏰 Гильдия'},
+  '⚔️ 난이도 선택':   {en:'⚔️ Select Difficulty', ja:'⚔️ 難易度選択',       zh:'⚔️ 选择难度',      es:'⚔️ Dificultad',       ru:'⚔️ Сложность'},
+  '베팅 금액 선택':   {en:'Select Bet Amount',    ja:'ベット額選択',         zh:'选择下注额',       es:'Elegir apuesta',      ru:'Выбор ставки'},
+  // ── 모험+ 확장 탭 ──
+  '🏅 시즌':          {en:'🏅 Season',            ja:'🏅 シーズン',         zh:'🏅 赛季',          es:'🏅 Temporada',        ru:'🏅 Сезон'},
+  '📅 주간 챌린지':   {en:'📅 Weekly Challenge',  ja:'📅 週間チャレンジ',    zh:'📅 每周挑战',      es:'📅 Desafío semanal',  ru:'📅 Недельный вызов'},
+  '👹 보스 도전':     {en:'👹 Boss Challenge',    ja:'👹 ボス挑戦',         zh:'👹 挑战首领',      es:'👹 Desafío de jefe',  ru:'👹 Вызов босса'},
+  '🤝 협력 원정대 레이드': {en:'🤝 Co-op Expedition Raid', ja:'🤝 協力遠征レイド', zh:'🤝 协力远征团', es:'🤝 Raid cooperativa', ru:'🤝 Кооп-рейд'},
+  '🚪 숨겨진 던전':   {en:'🚪 Hidden Dungeons',   ja:'🚪 隠しダンジョン',    zh:'🚪 隐藏地下城',    es:'🚪 Mazmorras ocultas', ru:'🚪 Скрытые данжи'},
+  '⚒️ 제작 공방':     {en:'⚒️ Crafting Workshop', ja:'⚒️ 製作工房',         zh:'⚒️ 制作工坊',      es:'⚒️ Taller',           ru:'⚒️ Мастерская'},
+  '📖 균열의 기록 (스토리)': {en:'📖 Rift Records (Story)', ja:'📖 裂け目の記録', zh:'📖 裂缝记录(剧情)', es:'📖 Registros (Historia)', ru:'📖 Записи Разлома'},
+  '📕 장비 대도감':   {en:'📕 Equipment Codex',   ja:'📕 装備大図鑑',        zh:'📕 装备大图鉴',    es:'📕 Códice de equipo', ru:'📕 Кодекс снаряжения'},
+  '🏆 확장 업적':     {en:'🏆 Extended Achievements', ja:'🏆 拡張実績',      zh:'🏆 扩展成就',      es:'🏆 Logros extra',     ru:'🏆 Доп. достижения'},
+  '🎇 전투 이펙트 스타일': {en:'🎇 Battle FX Style', ja:'🎇 戦闘エフェクト', zh:'🎇 战斗特效风格',  es:'🎇 Estilo de efectos', ru:'🎇 Стиль эффектов'},
+};
+function uiTr(koText){
+  const ko = koText.trim();
+  if(currentLanguage === 'ko') return ko;
+  const m = UI_I18N[ko];
+  return (m && m[currentLanguage]) || ko;
+}
 function applyLanguage(){
   try {
+    // 1) data-i18n 요소 (rotate_hint 처럼 <br>이 포함되므로 innerHTML 사용)
     document.querySelectorAll('[data-i18n]').forEach(el=>{
       const key = el.getAttribute('data-i18n');
       const val = t(key);
-      if(val) el.textContent = val;
+      if(val) el.innerHTML = val;
     });
+    // 2) 탭 버튼 + 모든 섹션 제목(h2)의 첫 텍스트 노드 번역
+    //    (내부 <span> 카운터 등은 건드리지 않음 · 원본을 기억해 언어를 여러 번 바꿔도 OK)
+    document.querySelectorAll('.tabs button, h2').forEach(el=>{
+      for(const node of el.childNodes){
+        if(node.nodeType === 3 && node.nodeValue.trim()){
+          if(node._koOrig == null) node._koOrig = node.nodeValue;
+          const orig = node._koOrig;
+          const trail = /\s$/.test(orig) ? ' ' : '';
+          node.nodeValue = uiTr(orig) + trail;
+          break;   // 첫 텍스트 노드만
+        }
+      }
+    });
+    // 3) 문서 제목도 언어 반영
+    if(LANG[currentLanguage] && LANG[currentLanguage].game_title){
+      document.title = LANG[currentLanguage].game_title;
+    }
   } catch(e){}
 }
 
@@ -4681,7 +4796,7 @@ const BAL = {
   expDrop   : s => 4  * Math.pow(1.12, Math.min(s,100)-1) * Math.sqrt(tierGoldMul(s)),
   expReq    : L => Math.round(50 * Math.pow(L,1.5) * Math.pow(1.10,L)),
   upCost    : (base,n) => Math.round(base * Math.pow(1.07, n)),
-  upBonus   : (base,n) => Math.floor(base * (Math.pow(1.05, n)-1) / 0.05),
+  upBonus   : (base,n) => Math.floor(base * (Math.pow(1.04, n)-1) / 0.04),   // ⚖️ 너프: 성장률 1.05→1.04
   shardsFor : s => Math.floor(Math.pow(s,1.6)/10),
   bossHPMul : 5, bossTime : 30, killsForBoss : 10,
 };
@@ -5344,12 +5459,12 @@ function optText(o){
 function eqPower(e){
   if(!e) return 0;
   if(e.dev || e.grade === 'Developer' || e.base === Infinity) return Infinity;
-  return Math.round(e.base * (1 + 0.1*e.enh) * Math.pow(2, e.awk||0));
+  return Math.round(e.base * (1 + 0.07*e.enh) * Math.pow(2, e.awk||0));   // ⚖️ 너프: 강화당 +10%→+7%
 }
 function playerATK(){
   // ⚖️ 초반 약화 밸런스: 기본 공격력을 낮추고, 강화/스탯 투자 비중을 높임
-  let a = 3 + S.level*1 + BAL.upBonus(8, S.atkLv);   // 기본 3, 레벨당 +1, 강화 보너스 강화(base 5→8)
-  a += (S.stats.str-10)*5;                            // 힘 1당 +5 (기존 +3) → 스탯 찍는 맛
+  let a = 3 + S.level*1 + BAL.upBonus(5, S.atkLv);   // ⚖️ 너프: 강화 base 8→5
+  a += (S.stats.str-10)*3;                            // ⚖️ 너프: 힘 1당 +5→+3
 
   const _job = curJob();
   if(_job.noWeapon){
@@ -5380,7 +5495,7 @@ function playerATK(){
 }
 function playerDEF(){
   // ⚖️ 초반 약화: 레벨 비중↓, 방어 강화 비중↑
-  let d = 1 + Math.floor(S.level*0.5) + BAL.upBonus(4, S.defLv);
+  let d = 1 + Math.floor(S.level*0.5) + BAL.upBonus(3, S.defLv);   // ⚖️ 너프: 강화 base 4→3
   const ar = eqById(S.armor); if(ar) d += eqPower(ar);
   if(S.pets.golemp) d *= 1.20;
   d *= petBonus('def');
@@ -5390,7 +5505,7 @@ function playerDEF(){
   return Math.round(d);
 }
 function playerMaxHP(){
-  let hp = 60 + S.level*10 + playerDEF()*3 + (S.stats.vit-10)*40;  // ⚖️ 기본↓ 레벨↓, 체력 스탯 1당 +40
+  let hp = 60 + S.level*10 + playerDEF()*3 + (S.stats.vit-10)*25;  // ⚖️ 너프: 체력 스탯 1당 +40→+25
   hp *= jobHpMul();                    // 🎭 직업 HP 배수
   const _o = equippedOpts();
   if(_o.hpP) hp *= 1 + _o.hpP/100;    // 🔮 옵션: 최대 HP %
@@ -5564,7 +5679,8 @@ function dropEquip(wi, isBoss){
     S.gold += Math.floor(base*2); recGold(Math.floor(base*2));
     return;
   }
-  if(S.equips.length >= S.invCap){
+  const invCap = S.invCap || 30;  // 기본값 설정
+  if(S.equips.length >= invCap){
     const sell = Math.floor(base*2);
     S.gold += sell; recGold(sell);
     log('인벤토리가 가득 차 <span class="g">'+fmt(sell)+' 골드</span>로 자동 판매!');
@@ -5721,11 +5837,19 @@ const IAP_PRODUCTS = {
     grant(){
       // 희귀 무기 지급
       const w = makeGachaWeapon(true, false); w.grade = 'Epic'; w.base = Math.round(w.base*1.5);
-      S.equips.push(w);
-      S.gold += 500000; recGold(500000);
-      S.shards += 50;
-      S.stones = (S.stones||0) + 30;
-      log('<span class="gP">🌱 새싹 패키지 지급! 에픽 무기 + 골드 50만 + 조각 50 + 강화석 30</span>');
+      if(S.equips.length < S.invCap){
+        S.equips.push(w);
+        S.gold += 500000; recGold(500000);
+        S.shards += 50;
+        S.stones = (S.stones||0) + 30;
+        log('<span class="gP">🌱 새싹 패키지 지급! 에픽 무기 + 골드 50만 + 조각 50 + 강화석 30</span>');
+      } else {
+        // 인벤토리가 가득 찬 경우 골드로만 지급
+        S.gold += 500000 + Math.floor(w.base*2); recGold(500000 + Math.floor(w.base*2));
+        S.shards += 50;
+        S.stones = (S.stones||0) + 30;
+        log('<span class="r">🌱 새싹 패키지: 인벤토리 가득 참! 무기 대신 골드 추가 지급</span>');
+      }
     }
   },
   // 💎 코인 팩들 (코인 상점용 재화)
@@ -5746,8 +5870,13 @@ const IAP_PRODUCTS = {
       if(!wasVip){
         // 즉시 지급 보상: VIP 전용 무기 1회
         const w = makeGachaWeapon(true, true); w.grade = 'Legendary'; w.vip = true;
-        S.equips.push(w);
-        log('<span class="gDEV">👑 VIP 가입! 전용 칭호·테두리 획득 + 전설 무기 지급</span>');
+        if(S.equips.length < S.invCap){
+          S.equips.push(w);
+          log('<span class="gDEV">👑 VIP 가입! 전용 칭호·테두리 획득 + 전설 무기 지급</span>');
+        } else {
+          S.gold += Math.floor(w.base*2);
+          log('<span class="gDEV">👑 VIP 가입! 전용 칭호·테두리 획득 + 인벤토리 가득 참! 무기 대신 골드 지급</span>');
+        }
       } else {
         log('<span class="gDEV">👑 VIP 기간이 1년 연장되었습니다!</span>');
       }
@@ -5932,7 +6061,7 @@ function buyDLC(which){
 /* ---------- 💎 코인 상점 (코인으로 사는 인게임 상품) ---------- */
 const COIN_SHOP = [
   { id:'coin_weapon', name:'🗡️ 고급 무기 뽑기', cost:80, desc:'에픽 이상 무기 1개',
-    buy(){ const w=makeGachaWeapon(true,false); if(GRADES.indexOf(w.grade)<2){w.grade='Epic';} S.equips.push(w); log('<span class="g">🗡️ '+eqLabel(w)+' 획득!</span>'); } },
+    buy(){ const w=makeGachaWeapon(true,false); if(GRADES.indexOf(w.grade)<2){w.grade='Epic';} if(S.equips.length < S.invCap){ S.equips.push(w); log('<span class="g">🗡️ '+eqLabel(w)+' 획득!</span>'); } else { S.gold += Math.floor(w.base*2); log('<span class="r">인벤토리 가득 참! 골드 '+fmt(Math.floor(w.base*2))+'으로 환급했습니다.</span>'); } } },
   { id:'coin_gold', name:'💰 골드 대량', cost:30, desc:'골드 100만',
     buy(){ S.gold+=1000000; recGold(1000000); } },
   { id:'coin_shards', name:'🔮 균열의 조각 50', cost:50, desc:'조각 50개',
@@ -6014,9 +6143,14 @@ function claimVipDaily(){
   if(S.vipDaily.last === today){ log('<span class="y">오늘은 이미 수령했습니다.</span>'); return; }
   S.vipDaily.last = today; S.vipDaily.dungeonUses = 0;
   const w = makeGachaWeapon(true, false); if(GRADES.indexOf(w.grade)<3){ w.grade='Unique'; } w.vip=true;
-  S.equips.push(w);
-  S.gold += 200000; recGold(200000); S.shards += 10;
-  log('<span class="gDEV">🎁 VIP 일일 패키지! '+eqLabel(w)+' + 골드 20만 + 조각 10</span>');
+  if(S.equips.length < S.invCap){
+    S.equips.push(w);
+    S.gold += 200000; recGold(200000); S.shards += 10;
+    log('<span class="gDEV">🎁 VIP 일일 패키지! '+eqLabel(w)+' + 골드 20만 + 조각 10</span>');
+  } else {
+    S.gold += 200000 + Math.floor(w.base*2); recGold(200000 + Math.floor(w.base*2)); S.shards += 10;
+    log('<span class="gDEV">🎁 VIP 일일 패키지! 인벤토리 가득 참! + 골드 20만 + 조각 10</span>');
+  }
   try{ if(typeof showToast==='function') showToast('🎁 VIP 일일 패키지 수령!', 'gacha'); }catch(e){}
   renderShop(); renderAll(); saveGame(true);
 }
@@ -6032,8 +6166,14 @@ function enterVipDungeon(){
   const goldR = Math.round(500000 * Math.pow(1.5, S.stage/20));
   S.gold += goldR; recGold(goldR);
   S.shards += 15; S.stones = (S.stones||0)+10;
-  const w = makeGachaWeapon(true, false); S.equips.push(w);
-  log('<span class="gDEV">🏰 VIP 던전 클리어! 골드 +'+fmt(goldR)+' · 조각 15 · 강화석 10 · '+eqLabel(w)+'</span>');
+  const w = makeGachaWeapon(true, false);
+  if(S.equips.length < S.invCap){
+    S.equips.push(w);
+    log('<span class="gDEV">🏰 VIP 던전 클리어! 골드 +'+fmt(goldR)+' · 조각 15 · 강화석 10 · '+eqLabel(w)+'</span>');
+  } else {
+    S.gold += Math.floor(w.base*2);
+    log('<span class="gDEV">🏰 VIP 던전 클리어! 골드 +'+fmt(goldR)+' · 조각 15 · 강화석 10 (인벤토리 가득 참! 무기 골드로 환급)</span>');
+  }
   try{ if(typeof showToast==='function') showToast('🏰 VIP 던전 보상 획득!', 'gacha'); }catch(e){}
   renderShop(); renderAll(); saveGame(true);
 }
@@ -9276,7 +9416,7 @@ function renderStats(){
   $('atkLvTxt').textContent = 'Lv.'+S.atkLv;
   $('defLvTxt').textContent = 'Lv.'+S.defLv;
   $('atkGainTxt').textContent = '현재 보너스 +'+fmt(BAL.upBonus(5,S.atkLv))+' → 다음 +'+fmt(BAL.upBonus(5,S.atkLv+1));
-  $('defGainTxt').textContent = '현재 보너스 +'+fmt(BAL.upBonus(2,S.defLv))+' → 다음 +'+fmt(BAL.upBonus(2,S.defLv+1));
+  $('defGainTxt').textContent = '현재 보너스 +'+fmt(BAL.upBonus(3,S.defLv))+' → 다음 +'+fmt(BAL.upBonus(3,S.defLv+1));
   $('upAtk').textContent = fmt(ca)+' G'; $('upAtk').disabled = S.gold < ca;
   $('upDef').textContent = fmt(cd)+' G'; $('upDef').disabled = S.gold < cd;
   const cc = BAL.upCost(20, S.critLv);
@@ -11087,6 +11227,7 @@ function loadDifficulty() {
     if(!S.battleSpeed) S.battleSpeed = 1;
     if(S.autoBattle == null) S.autoBattle = false;
     if(S.dlc && S.dlc.slots == null) S.dlc.slots = false;
+    if(!S.invCap) S.invCap = 30;  // 인벤토리 용량 기본값
     try{ applyVipSlots(); }catch(e){}
     const elapsed = (Date.now() - (S.savedAt || Date.now()))/1000;
     if(elapsed > 60){
@@ -12444,6 +12585,580 @@ window.showAuctionGUI = showAuctionGUI;
 window.closeGUI = closeGUI;
 window.Audio8 = Audio8;
 window.BGM = BGM;
+</script>
+
+<script>
+/* ================================================================
+   🌌 모험+ 확장팩: 도감/보스도전/업적/숨은던전/협력레이드/주간챌린지
+                     /이펙트/스토리/제작/시즌  (10대 시스템)
+   ================================================================ */
+(function(){
+'use strict';
+
+/* ---------- 유틸 & 상태 초기화 ---------- */
+function E$(id){ return document.getElementById(id); }
+function seasonKey(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
+function weekKey(){
+  const d=new Date(); const onejan=new Date(d.getFullYear(),0,1);
+  const w=Math.ceil((((d-onejan)/86400000)+onejan.getDay()+1)/7);
+  return d.getFullYear()+'-W'+w;
+}
+function rngSeed(str){ let h=0; for(let i=0;i<str.length;i++){ h=(h*31+str.charCodeAt(i))>>>0; } return h; }
+
+function ensureExt(){
+  if(typeof S==='undefined' || !S) return false;
+  if(!S.ext) S.ext = {};
+  const e = S.ext;
+  if(!e.codexClaim) e.codexClaim = {};
+  if(!e.codexOwned) e.codexOwned = {};
+  if(!e.bossRec)    e.bossRec = {};
+  if(!e.bossKilled) e.bossKilled = {};
+  if(!e.hidden)     e.hidden = {};
+  if(!e.storyRead)  e.storyRead = {};
+  if(!e.ach)        e.ach = {};
+  if(!e.fxStyle)    e.fxStyle = 'classic';
+  if(!e.craftCount) e.craftCount = 0;
+  if(!e.mercs)      e.mercs = 0;
+  // 협력 레이드
+  if(!e.raid || typeof e.raid.hp!=='number'){
+    e.raid = { lv:1, hp: 50000, maxHp: 50000, kills:0 };
+  }
+  // 주간 챌린지
+  if(!e.weekly || e.weekly.key !== weekKey()){
+    e.weekly = { key: weekKey(), baseKills: S.totalKills||0, baseEnh: S.enhSuccess||0,
+                 baseStage: S.maxStage||1, baseCraft: e.craftCount||0, claimed:{} };
+  }
+  // 시즌
+  if(!e.season || e.season.key !== seasonKey()){
+    const prev = e.season;
+    e.season = { key: seasonKey(), baseKills: S.totalKills||0, claimed:{} };
+    if(prev && prev.key){
+      const earned = Math.max(0,(S.totalKills||0)-(prev.baseKills||0));
+      const bonus = Math.min(50, Math.floor(earned/500)*5) + 10;
+      S.shards = (S.shards||0) + bonus;
+      try{ log('<span class="gP">🏅 ['+prev.key+' 시즌 정산] 균열의 조각 +'+bonus+' 지급!</span>'); }catch(err){}
+    }
+  }
+  return true;
+}
+
+/* ================================================================
+   1️⃣ 장비 대도감 (무기+방어구 · 완성 보상 · 레어 마크)
+   ================================================================ */
+const CODEX_REWARDS = [
+  {need:10,  gold:20,  shards:3,  stones:5,   name:'수집가 입문'},
+  {need:25,  gold:60,  shards:8,  stones:15,  name:'수집가'},
+  {need:50,  gold:150, shards:20, stones:40,  name:'베테랑 수집가'},
+  {need:80,  gold:400, shards:50, stones:100, name:'전설의 수집가'},
+];
+function codexScan(){
+  // 인벤토리/장착/도감(S.coll)을 스캔해 소유 기록
+  for(const it of (S.equips||[])){ if(it && it.name && !it.dev) S.ext.codexOwned[it.name]=true; }
+  for(const n of Object.keys(S.coll||{})) S.ext.codexOwned[n]=true;
+}
+function codexFullList(){
+  const w = (typeof WEAPON_BASE!=='undefined')?WEAPON_BASE:[];
+  const a = (typeof ARMOR_BASE!=='undefined')?ARMOR_BASE:[];
+  return {w,a};
+}
+function codexCount(){ return Object.keys(S.ext.codexOwned).length; }
+function codexClaimReward(idx){
+  const r = CODEX_REWARDS[idx]; if(!r) return;
+  if(S.ext.codexClaim[idx]) return;
+  if(codexCount() < r.need){ log('<span class="r">도감 '+r.need+'종을 먼저 수집하세요.</span>'); return; }
+  S.ext.codexClaim[idx]=true;
+  const g = Math.floor(BAL.goldDrop(S.stage)*r.gold);
+  S.gold+=g; recGold(g); S.shards=(S.shards||0)+r.shards; S.stones=(S.stones||0)+r.stones;
+  log('<span class="g">📕 도감 보상 ['+r.name+'] +'+fmt(g)+'G · 조각+'+r.shards+' · 강화석+'+r.stones+'</span>');
+  saveGame(true); renderExt();
+}
+window.codexClaimReward = codexClaimReward;
+function renderCodex(){
+  const {w,a} = codexFullList();
+  const total = w.length + a.length;
+  const own = codexCount();
+  if(E$('extCodexTxt')) E$('extCodexTxt').textContent = '('+own+'/'+total+'종)';
+  // 보상 버튼
+  if(E$('extCodexRewardBox')){
+    E$('extCodexRewardBox').innerHTML = CODEX_REWARDS.map((r,i)=>{
+      const done = !!S.ext.codexClaim[i]; const can = own>=r.need && !done;
+      return '<div class="row"><div class="info">'+r.name+' <small>'+r.need+'종 수집 시 · 골드+조각'+r.shards+'+강화석'+r.stones+'</small></div>'
+        + '<button class="gold-btn" onclick="codexClaimReward('+i+')" '+(can?'':'disabled')+'>'+(done?'수령완료':(can?'보상받기':own+'/'+r.need))+'</button></div>';
+    }).join('');
+  }
+  // 목록 (희귀 마크: 보유 아이템 중 최고 등급 표시)
+  if(E$('extCodexBox')){
+    const bestGrade = {};
+    for(const it of (S.equips||[])){
+      if(!it||!it.name||it.dev) continue;
+      const gi = GRADES.indexOf(it.grade);
+      if(!(it.name in bestGrade) || gi>bestGrade[it.name]) bestGrade[it.name]=gi;
+    }
+    const cell = (n)=>{
+      const has = !!S.ext.codexOwned[n];
+      const gi = bestGrade[n];
+      const star = (gi!=null && gi>=4)?' <span style="color:var(--gold)">★</span>':'';
+      const col = has ? ((gi!=null&&GRADES[gi])?(GRADE_COLOR[GRADES[gi]]||'var(--txt)'):'var(--txt)') : 'var(--mut)';
+      return '<span style="display:inline-block;width:49%;font-size:11px;color:'+col+';opacity:'+(has?1:.45)+'">'+(has?'◆ ':'◇ ')+n+star+'</span>';
+    };
+    E$('extCodexBox').innerHTML =
+      '<div style="color:var(--cyan);font-size:12px;margin-bottom:4px;">🗡️ 무기 ('+w.filter(n=>S.ext.codexOwned[n]).length+'/'+w.length+')</div>'
+      + w.map(cell).join('')
+      + '<div style="color:var(--cyan);font-size:12px;margin:6px 0 4px;">🛡️ 방어구 ('+a.filter(n=>S.ext.codexOwned[n]).length+'/'+a.length+')</div>'
+      + a.map(cell).join('');
+  }
+}
+
+/* ================================================================
+   2️⃣ 보스 도전 (고정 보스 · 전용 무기 · 최단 기록)
+   ================================================================ */
+const EXT_BOSSES = [
+  {id:'slimeKing', name:'👑 슬라임 킹',      stage:10,  hpMul:60,   atkMul:4,  wpn:'슬라임 킹의 점액검',   grade:'Epic'},
+  {id:'ironGolem', name:'🗿 강철 골렘',      stage:25,  hpMul:200,  atkMul:8,  wpn:'골렘 코어 해머',       grade:'Unique'},
+  {id:'lichLord',  name:'💀 리치 군주',      stage:50,  hpMul:700,  atkMul:15, wpn:'리치의 명계 지팡이',   grade:'Legendary'},
+  {id:'voidDrake', name:'🐉 공허 드레이크',  stage:75,  hpMul:2500, atkMul:25, wpn:'드레이크 아귀 대검',   grade:'Mythic'},
+  {id:'riftTitan', name:'🌌 균열의 거신',    stage:100, hpMul:9000, atkMul:40, wpn:'거신의 차원 절단기',   grade:'Celestial'},
+];
+function extBossFight(id){
+  const b = EXT_BOSSES.find(x=>x.id===id); if(!b) return;
+  if((S.maxStage||1) < b.stage){ log('<span class="r">스테이지 '+b.stage+' 도달 후 도전할 수 있습니다.</span>'); return; }
+  const atk = playerATK(); if(!isFinite(atk)){ log('<span class="r">개발자 장비로는 기록 도전이 불가합니다.</span>'); return; }
+  const bossHp  = (BAL.monsterHP ? BAL.monsterHP(b.stage) : b.stage*1000) * b.hpMul;
+  const bossAtk = (BAL.monsterATK ? BAL.monsterATK(b.stage) : b.stage*10) * b.atkMul;
+  const def = playerDEF(), hp = playerMaxHP();
+  const myDps  = Math.max(1, atk*2);                       // 평균 초당 2타 가정
+  const dmgIn  = Math.max(1, bossAtk - def*0.7);           // 초당 피해
+  const killT  = bossHp/myDps;                              // 처치까지 시간
+  const dieT   = hp/dmgIn;                                  // 내가 버티는 시간
+  if(dieT <= killT){
+    log('<span class="r">💥 '+b.name+'에게 패배… (버틴 시간 '+dieT.toFixed(1)+'s / 필요 '+killT.toFixed(1)+'s) 강해져서 다시 오세요!</span>');
+    sfx && sfx('hit'); renderExt(); return;
+  }
+  const t = Math.max(1, killT + Math.random()*2);
+  const first = !S.ext.bossKilled[id];
+  S.ext.bossKilled[id] = (S.ext.bossKilled[id]||0)+1;
+  const prev = S.ext.bossRec[id];
+  if(prev==null || t < prev){ S.ext.bossRec[id]=t; log('<span class="c">⏱️ '+b.name+' 신기록! '+t.toFixed(2)+'초</span>'); }
+  const g = Math.floor(BAL.goldDrop(b.stage)*30*goldMult());
+  S.gold+=g; recGold(g); S.shards=(S.shards||0)+3;
+  if(first){
+    const gm = Math.pow(2.4, GRADES.indexOf(b.grade));
+    const base = Math.round(10*Math.pow(1.18,b.stage-1)*gm*1.3);
+    const invCap = S.invCap||30;
+    if(S.equips.length < invCap){
+      const it = {id:S.nextId++, type:'weapon', grade:b.grade, name:b.wpn, base, enh:0, opts:rollEquipOpts(b.grade)};
+      S.equips.push(it); S.ext.codexOwned[b.wpn]=true; collAdd(b.wpn);
+      log('<span class="gP">👹 '+b.name+' 첫 처치! 전용 무기 <b>'+b.wpn+'</b> 획득!!</span>');
+    } else {
+      S.gold += base*2;
+      log('<span class="gP">👹 '+b.name+' 첫 처치! (인벤토리 가득 → 전용 무기 골드 환급)</span>');
+    }
+  } else {
+    log('<span class="g">👹 '+b.name+' 처치! +'+fmt(g)+'G · 조각+3 ('+S.ext.bossKilled[id]+'회)</span>');
+  }
+  sfx && sfx('kill');
+  extAddSeasonExp(30);
+  checkExtAch(); saveGame(true); renderExt(); renderAll();
+}
+window.extBossFight = extBossFight;
+function renderBoss(){
+  if(!E$('extBossBox')) return;
+  E$('extBossBox').innerHTML = EXT_BOSSES.map(b=>{
+    const open = (S.maxStage||1)>=b.stage;
+    const rec = S.ext.bossRec[b.id];
+    const kc = S.ext.bossKilled[b.id]||0;
+    return '<div class="row"><div class="info">'+b.name+' <span class="'+(GRADE_CLS[b.grade]||'')+'" style="font-size:11px;">['+b.wpn+']</span>'
+      + '<small>해금: 스테이지 '+b.stage+' · 처치 '+kc+'회'+(rec!=null?' · 🏆최단 '+rec.toFixed(2)+'s':'')+'</small></div>'
+      + '<button '+(open?'':'disabled')+' onclick="extBossFight(\''+b.id+'\')">'+(open?(kc>0?'재도전':'도전!'):'🔒')+'</button></div>';
+  }).join('');
+}
+
+/* ================================================================
+   3️⃣ 확장 업적 (뱃지 + 골드/조각/스톤 보상)
+   ================================================================ */
+const EXT_ACHS = [
+  {id:'lv50',    badge:'🥉', name:'레벨 50 달성',            c:()=>S.level>=50,                          gold:50,  shards:5,  stones:10},
+  {id:'lv100',   badge:'🥇', name:'레벨 100 달성',           c:()=>S.level>=100,                         gold:200, shards:20, stones:40},
+  {id:'gacha10', badge:'🎰', name:'뽑기 10연 마스터',        c:()=>(S.pity||0)>=10||(S.totalKills||0)>=0&&Object.keys(S.coll||{}).length>=15, gold:60, shards:8, stones:0},
+  {id:'rich1m',  badge:'💰', name:'백만장자 (골드 100만 보유)', c:()=>S.gold>=1000000,                   gold:0,   shards:15, stones:20},
+  {id:'codex30', badge:'📕', name:'도감 30종 수집',          c:()=>codexCount()>=30,                     gold:100, shards:12, stones:20},
+  {id:'codex60', badge:'📚', name:'도감 60종 수집',          c:()=>codexCount()>=60,                     gold:300, shards:30, stones:60},
+  {id:'boss3',   badge:'👹', name:'도전 보스 3종 처치',      c:()=>Object.keys(S.ext.bossKilled).length>=3, gold:150, shards:20, stones:30},
+  {id:'boss5',   badge:'🐲', name:'도전 보스 전종 제패',     c:()=>Object.keys(S.ext.bossKilled).length>=5, gold:500, shards:60, stones:100},
+  {id:'craft5',  badge:'⚒️', name:'제작 5회',               c:()=>S.ext.craftCount>=5,                   gold:80,  shards:10, stones:0},
+  {id:'raid3',   badge:'🤝', name:'원정대 레이드 보스 3마리', c:()=>S.ext.raid.kills>=3,                  gold:200, shards:25, stones:40},
+  {id:'hidden3', badge:'🚪', name:'숨겨진 던전 전부 발견',   c:()=>Object.keys(S.ext.hidden).length>=3,  gold:250, shards:30, stones:50},
+  {id:'story8',  badge:'📖', name:'균열의 진실을 아는 자',   c:()=>Object.keys(S.ext.storyRead).length>=8, gold:300, shards:40, stones:0},
+  {id:'guildW',  badge:'🏰', name:'길드의 일원',             c:()=>!!(S.guildName||S.guild),             gold:50,  shards:5,  stones:5},
+  {id:'tower30', badge:'🗼', name:'무한의 탑 30층',          c:()=>S.tower>=31,                          gold:200, shards:25, stones:30},
+];
+function checkExtAch(){
+  if(!ensureExt()) return;
+  for(const a of EXT_ACHS){
+    if(S.ext.ach[a.id]) continue;
+    let ok=false; try{ ok=a.c(); }catch(e){}
+    if(ok){
+      S.ext.ach[a.id]=true;
+      const g = Math.floor(BAL.goldDrop(S.stage)*a.gold);
+      if(a.gold){ S.gold+=g; recGold(g); }
+      if(a.shards) S.shards=(S.shards||0)+a.shards;
+      if(a.stones) S.stones=(S.stones||0)+a.stones;
+      log('<span class="g">'+a.badge+' 확장 업적 ['+a.name+'] 달성!'+(a.gold?' +'+fmt(g)+'G':'')+(a.shards?' 조각+'+a.shards:'')+(a.stones?' 강화석+'+a.stones:'')+'</span>');
+      try{ if(typeof showToast==='function') showToast(a.badge+' 업적 달성!<br><span style="font-size:11px">'+a.name+'</span>','gacha',2500); }catch(e){}
+    }
+  }
+}
+function renderExtAch(){
+  if(!E$('extAchBox')) return;
+  const done = EXT_ACHS.filter(a=>S.ext.ach[a.id]).length;
+  if(E$('extAchTxt')) E$('extAchTxt').textContent='('+done+'/'+EXT_ACHS.length+')';
+  E$('extAchBox').innerHTML = EXT_ACHS.map(a=>{
+    const ok = !!S.ext.ach[a.id];
+    return '<div class="row" style="opacity:'+(ok?1:.55)+'"><div class="info">'+a.badge+' '+a.name
+      +'<small>'+(a.gold?'골드 ':'')+(a.shards?'조각+'+a.shards+' ':'')+(a.stones?'강화석+'+a.stones:'')+'</small></div>'
+      +'<span style="font-size:12px;color:'+(ok?'var(--green)':'var(--mut)')+'">'+(ok?'달성 ✓':'미달성')+'</span></div>';
+  }).join('');
+}
+
+/* ================================================================
+   4️⃣ 숨겨진 던전 / 스토리 이벤트 (조건 해금 · 한정 아이템)
+   ================================================================ */
+const HIDDEN_DGNS = [
+  {id:'mirror', name:'🪞 거울의 방', cond:()=> (S.maxStage||1)>=15 && codexCount()>=10,
+    condTxt:'스테이지 15 + 도감 10종',
+    story:'거울 속의 또 다른 만물상이 당신을 바라봅니다.<br>"너는… 나인가?"<br>거울이 산산조각 나며 파편이 손에 들어옵니다.',
+    item:{name:'거울 파편검', grade:'Unique', type:'weapon'}, shards:10},
+  {id:'clock', name:'🕰️ 멈춘 시계탑', cond:()=> (S.rebirths||0)>=1 && (S.tower||1)>=11,
+    condTxt:'환생 1회 + 무한의 탑 10층',
+    story:'시계탑의 바늘이 거꾸로 돕니다.<br>시간의 관리인이 속삭입니다. "환생자여, 그대는 이미 이 순간을 살았다."<br>멈춘 시간 속에서 갑주 하나를 얻었습니다.',
+    item:{name:'시간 정지 갑주', grade:'Legendary', type:'armor'}, shards:20},
+  {id:'abyss', name:'🕳️ 심연의 균열핵', cond:()=> Object.keys(S.ext.bossKilled).length>=4 && (S.maxStage||1)>=80,
+    condTxt:'도전 보스 4종 + 스테이지 80',
+    story:'균열의 가장 깊은 곳. 심장처럼 뛰는 핵이 있습니다.<br>"만물상이여, 균열은 닫히기 위해 존재한다. 너의 손으로."<br>핵의 파편이 무기가 되어 응답합니다.',
+    item:{name:'균열핵 절멸검', grade:'Mythic', type:'weapon'}, shards:40},
+];
+function enterHidden(id){
+  const d = HIDDEN_DGNS.find(x=>x.id===id); if(!d) return;
+  let ok=false; try{ ok=d.cond(); }catch(e){}
+  if(!ok){ log('<span class="r">아직 입장 조건을 만족하지 못했습니다. ('+d.condTxt+')</span>'); return; }
+  if(S.ext.hidden[id]){ log('<span class="y">이미 정복한 던전입니다.</span>'); return; }
+  S.ext.hidden[id]=true;
+  const gm = Math.pow(2.4, GRADES.indexOf(d.item.grade));
+  const base = Math.round(10*Math.pow(1.18,(S.maxStage||1))*gm*1.2);
+  const invCap = S.invCap||30;
+  let got = '';
+  if(S.equips.length < invCap){
+    const it = {id:S.nextId++, type:d.item.type, grade:d.item.grade, name:d.item.name, base, enh:0, opts:rollEquipOpts(d.item.grade)};
+    S.equips.push(it); S.ext.codexOwned[d.item.name]=true; if(d.item.type==='weapon') collAdd(d.item.name);
+    got = '<b>'+d.item.name+'</b> (한정 장비!)';
+  } else { S.gold += base*2; got = '한정 장비 → 골드 환급 (인벤토리 가득)'; }
+  S.shards=(S.shards||0)+d.shards;
+  showModal(d.name, '<div style="text-align:left">'+d.story+'</div><br><span class="big">획득: '+got+' · 조각 +'+d.shards+'</span>');
+  log('<span class="gP">🚪 숨겨진 던전 ['+d.name+'] 정복! '+got+'</span>');
+  extAddSeasonExp(50);
+  checkExtAch(); saveGame(true); renderExt(); renderAll();
+}
+window.enterHidden = enterHidden;
+function renderHidden(){
+  if(!E$('extHiddenBox')) return;
+  E$('extHiddenBox').innerHTML = HIDDEN_DGNS.map(d=>{
+    let ok=false; try{ ok=d.cond(); }catch(e){}
+    const done = !!S.ext.hidden[d.id];
+    const label = done?'정복완료':(ok?'입장!':'???');
+    return '<div class="row"><div class="info">'+(ok||done?d.name:'❓ 미지의 문')+'<small>'+(done?'클리어 · '+d.item.name+' 획득함':(ok?'입장 가능!':'해금 조건: '+d.condTxt))+'</small></div>'
+      + '<button '+((ok&&!done)?'':'disabled')+' onclick="enterHidden(\''+d.id+'\')">'+label+'</button></div>';
+  }).join('');
+}
+
+/* ================================================================
+   5️⃣ 협력 원정대 레이드 (용병 파티 · 공유 HP 보스)
+   ================================================================ */
+function mercCost(){ return Math.floor(2000*Math.pow(2.2, S.ext.mercs)); }
+function hireMerc(){
+  if(S.ext.mercs>=6){ log('<span class="y">용병은 최대 6명까지입니다.</span>'); return; }
+  const c = mercCost();
+  if(S.gold<c){ log('<span class="r">골드 부족 ('+fmt(c)+'G 필요)</span>'); return; }
+  S.gold-=c; S.ext.mercs++;
+  log('<span class="c">🤝 용병 영입! 원정대 '+(S.ext.mercs+1)+'인 파티</span>');
+  saveGame(true); renderRaid();
+}
+window.hireMerc = hireMerc;
+function raidAttack(){
+  const r = S.ext.raid;
+  const atk = playerATK(); if(!isFinite(atk)){ log('<span class="r">개발자 장비로는 레이드 기여가 불가합니다.</span>'); return; }
+  const partyMul = 1 + S.ext.mercs*0.5;                     // 용병 1명당 +50%
+  const dmg = Math.floor(atk*(8+Math.random()*4)*partyMul); // 1회 출전 = 약 10타 분량
+  r.hp -= dmg;
+  log('<span class="c">🤝 원정대 출전! 레이드 보스에게 <b>'+fmt(dmg)+'</b> 피해! (파티 '+(S.ext.mercs+1)+'인)</span>');
+  extAddSeasonExp(5);
+  if(r.hp<=0){
+    r.kills++;
+    const g = Math.floor(BAL.goldDrop(S.stage)*80*r.lv*goldMult());
+    S.gold+=g; recGold(g); S.shards=(S.shards||0)+5*r.lv; S.stones=(S.stones||0)+3*r.lv;
+    log('<span class="gP">🎉 Lv.'+r.lv+' 레이드 보스 격파! +'+fmt(g)+'G · 조각+'+(5*r.lv)+' · 강화석+'+(3*r.lv)+'</span>');
+    try{ if(typeof showToast==='function') showToast('🤝 레이드 보스 격파!','gacha',2500); }catch(e){}
+    r.lv++; r.maxHp = Math.floor(r.maxHp*3.2); r.hp = r.maxHp;
+    checkExtAch();
+  }
+  saveGame(true); renderRaid(); renderAll();
+}
+window.raidAttack = raidAttack;
+function renderRaid(){
+  if(!E$('extRaidBox')) return;
+  const r = S.ext.raid;
+  if(E$('extRaidLvTxt')) E$('extRaidLvTxt').textContent = 'Lv.'+r.lv+' 보스 · 격파 '+r.kills+'회';
+  const pct = Math.max(0, Math.min(100, r.hp/r.maxHp*100));
+  E$('extRaidBox').innerHTML =
+    '<div style="border:1px solid var(--line); padding:8px; background:var(--panel2); margin-bottom:6px;">'
+    + '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;"><span>👹 균열 침식체 Lv.'+r.lv+'</span><span>'+fmt(Math.max(0,r.hp))+' / '+fmt(r.maxHp)+'</span></div>'
+    + '<div class="bar"><div style="width:'+pct+'%;background:var(--red);height:100%"></div></div></div>'
+    + '<div class="row"><div class="info">파티 규모: 나 + 용병 '+S.ext.mercs+'명 <small>용병 1명당 출전 피해 +50%</small></div>'
+    + '<div style="display:flex;gap:4px;"><button class="gold-btn" onclick="hireMerc()" '+(S.ext.mercs>=6?'disabled':'')+'>'+(S.ext.mercs>=6?'MAX':'영입 '+fmt(mercCost())+'G')+'</button>'
+    + '<button onclick="raidAttack()">⚔️ 출전!</button></div></div>';
+}
+
+/* ================================================================
+   6️⃣ 주간 챌린지 (매주 목표 로테이션)
+   ================================================================ */
+function weeklyGoals(){
+  const seed = rngSeed(S.ext.weekly.key);
+  const kills = 300 + (seed%5)*100;
+  const enh   = 10 + (seed%4)*5;
+  const stg   = 3 + (seed%3)*2;
+  return [
+    {id:'wKill',  name:'몬스터 '+kills+'마리 처치', cur:()=>Math.max(0,(S.totalKills||0)-S.ext.weekly.baseKills), need:kills, shards:10, gold:80},
+    {id:'wEnh',   name:'강화 '+enh+'회 성공',        cur:()=>Math.max(0,(S.enhSuccess||0)-S.ext.weekly.baseEnh),  need:enh,   shards:8,  gold:60},
+    {id:'wStage', name:'스테이지 '+stg+'개 돌파',    cur:()=>Math.max(0,(S.maxStage||1)-S.ext.weekly.baseStage),  need:stg,   shards:12, gold:100},
+    {id:'wCraft', name:'장비 2회 제작',              cur:()=>Math.max(0,(S.ext.craftCount||0)-S.ext.weekly.baseCraft), need:2, shards:6, gold:50},
+  ];
+}
+function weeklyClaim(id){
+  const g0 = weeklyGoals().find(x=>x.id===id); if(!g0) return;
+  if(S.ext.weekly.claimed[id]) return;
+  if(g0.cur() < g0.need){ log('<span class="r">아직 목표 미달성입니다.</span>'); return; }
+  S.ext.weekly.claimed[id]=true;
+  const g = Math.floor(BAL.goldDrop(S.stage)*g0.gold);
+  S.gold+=g; recGold(g); S.shards=(S.shards||0)+g0.shards;
+  log('<span class="g">📅 주간 챌린지 ['+g0.name+'] 완료! +'+fmt(g)+'G · 조각+'+g0.shards+'</span>');
+  extAddSeasonExp(20);
+  saveGame(true); renderWeekly();
+}
+window.weeklyClaim = weeklyClaim;
+function renderWeekly(){
+  if(!E$('extWeeklyBox')) return;
+  if(E$('extWeekTxt')) E$('extWeekTxt').textContent = S.ext.weekly.key+' (매주 월요일 갱신)';
+  E$('extWeeklyBox').innerHTML = weeklyGoals().map(g=>{
+    const cur = Math.min(g.need, g.cur()); const done = !!S.ext.weekly.claimed[g.id]; const can = cur>=g.need && !done;
+    return '<div class="row"><div class="info">'+g.name+'<small>진행: '+fmt(cur)+'/'+fmt(g.need)+' · 보상: 골드+조각'+g.shards+'</small></div>'
+      + '<button class="gold-btn" onclick="weeklyClaim(\''+g.id+'\')" '+(can?'':'disabled')+'>'+(done?'수령완료':(can?'보상받기':'진행중'))+'</button></div>';
+  }).join('');
+}
+
+/* ================================================================
+   7️⃣ 전투 이펙트 스타일 (파티클 다양화)
+   ================================================================ */
+function extSetFx(style){
+  S.ext.fxStyle = style; saveGame(true);
+  log('<span class="c">🎇 전투 이펙트: '+({classic:'기본',spark:'스파크',rift:'균열'}[style]||style)+' 스타일 적용!</span>');
+}
+window.extSetFx = extSetFx;
+// 치명타 시 DOM 파티클 (기존 렌더러 훼손 없이 오버레이로 추가)
+const fxLayer = document.createElement('div');
+fxLayer.style.cssText='position:fixed;inset:0;pointer-events:none;z-index:9999;overflow:hidden;';
+document.body.appendChild(fxLayer);
+const fxCss = document.createElement('style');
+fxCss.textContent =
+  '@keyframes extFxUp{0%{transform:translateY(0) scale(1);opacity:1}100%{transform:translateY(-70px) scale(.3);opacity:0}}'
++ '@keyframes extFxSpin{0%{transform:rotate(0) translateX(0);opacity:1}100%{transform:rotate(360deg) translateX(50px);opacity:0}}';
+document.head.appendChild(fxCss);
+function spawnFx(){
+  const cv = document.getElementById('game'); if(!cv) return;
+  const rc = cv.getBoundingClientRect();
+  const style = (S.ext&&S.ext.fxStyle)||'classic';
+  const colors = style==='rift' ? ['#a06bff','#43e6cf','#ffffff'] : style==='spark' ? ['#ffd23f','#ff5470','#fff2a8'] : ['#ffd23f'];
+  const n = style==='classic'?3:7;
+  for(let i=0;i<n;i++){
+    const p = document.createElement('div');
+    const sz = 3+Math.random()*4;
+    p.style.cssText='position:absolute;width:'+sz+'px;height:'+sz+'px;image-rendering:pixelated;'
+      +'left:'+(rc.left+rc.width*(0.55+Math.random()*0.3))+'px;top:'+(rc.top+rc.height*(0.35+Math.random()*0.3))+'px;'
+      +'background:'+colors[Math.floor(Math.random()*colors.length)]+';'
+      +'animation:'+(style==='rift'?'extFxSpin':'extFxUp')+' '+(0.4+Math.random()*0.4)+'s linear forwards;';
+    fxLayer.appendChild(p);
+    setTimeout(()=>{ try{fxLayer.removeChild(p);}catch(e){} }, 900);
+  }
+}
+// hitMob의 crit 감지: addDmgNum 래핑 (존재할 때만)
+if(typeof window.addDmgNum==='function'){
+  const _orig = window.addDmgNum;
+  window.addDmgNum = function(dmg, who, crit, byPet){
+    try{ if(crit && who==='mob') spawnFx(); }catch(e){}
+    return _orig.apply(this, arguments);
+  };
+} else {
+  // 전역이 아니면 주기적 crit 감지 대신 킬 이벤트에 이펙트
+  let _lastKills = 0;
+  setInterval(()=>{ try{
+    if(typeof S!=='undefined'&&S&&S.totalKills>_lastKills){ if(_lastKills>0) spawnFx(); _lastKills=S.totalKills; }
+  }catch(e){} }, 400);
+}
+
+/* ================================================================
+   8️⃣ 리프트 스토리 (스테이지 진행 = 챕터 해금)
+   ================================================================ */
+const RIFT_STORY = [
+  {ch:1, stage:1,   title:'프롤로그 — 열린 균열',     txt:'어느 날, 하늘이 보랏빛으로 찢어졌다.<br>사람들은 도망쳤지만, 당신은 수레를 끌고 균열 앞에 가게를 차렸다.<br>"위기는 곧 기회. 만물상은 어디서든 장사를 한다."'},
+  {ch:2, stage:10,  title:'제1장 — 균열 너머의 손님', txt:'균열에서 나온 몬스터들이 물건을 탐낸다.<br>이상하게도, 그들은 골드를 지니고 있었다.<br>어째서 차원 저편의 존재가 인간의 화폐를…?'},
+  {ch:3, stage:25,  title:'제2장 — 강철 골렘의 각인', txt:'골렘의 코어에는 고대 문자가 새겨져 있었다.<br>"만물(萬物)은 균열(龜裂)로부터."<br>이 균열은… 자연재해가 아니라 누군가 만든 것이다.'},
+  {ch:4, stage:40,  title:'제3장 — 사라진 상인들',    txt:'당신 이전에도 균열 앞에서 장사한 만물상들이 있었다.<br>그들의 장부가 발견됐다. 마지막 페이지에는 한 문장뿐.<br>"균열의 심장이 나를 부른다."'},
+  {ch:5, stage:55,  title:'제4장 — 리치의 증언',      txt:'명계의 리치가 거래를 제안하며 말했다.<br>"균열은 차원의 상처가 아니다. <b>문(門)</b>이다.<br>그리고 문에는 반드시… 문지기가 있지."'},
+  {ch:6, stage:70,  title:'제5장 — 문지기의 정체',    txt:'공허 드레이크가 쓰러지며 웃었다.<br>"문지기는 바로 너다, 만물상.<br>물건을 사고파는 자만이 두 세계를 오갈 자격을 갖는다."'},
+  {ch:7, stage:85,  title:'제6장 — 첫 번째 만물상',   txt:'균열 최심부의 벽화에 그려진 것은… 수레를 끄는 상인.<br>태초에 차원을 잇고 만물을 유통한 존재.<br>당신의 핏줄에 흐르는 것은 우연이 아니었다.'},
+  {ch:8, stage:100, title:'최종장 — 균열의 진실',     txt:'균열의 거신이 무릎 꿇고 고한다.<br>"세계는 교환으로 이어진다. 균열은 그 증거.<br><b>그대가 장사를 계속하는 한, 두 세계는 공존한다.</b>"<br><br>— 그래서 만물상은 오늘도 가게 문을 연다. <span class="gP">Fin. (그리고 무한 반복…)</span>'},
+];
+function readStory(ch){
+  const s = RIFT_STORY.find(x=>x.ch===ch); if(!s) return;
+  if((S.maxStage||1) < s.stage){ log('<span class="r">스테이지 '+s.stage+' 도달 시 해금됩니다.</span>'); return; }
+  showModal('📖 '+s.title, '<div style="text-align:left;line-height:2">'+s.txt+'</div>');
+  if(!S.ext.storyRead[ch]){
+    S.ext.storyRead[ch]=true; S.shards=(S.shards||0)+3;
+    log('<span class="p">📖 ['+s.title+'] 열람 — 첫 열람 보상 조각+3</span>');
+    checkExtAch(); saveGame(true); renderStory();
+  }
+}
+window.readStory = readStory;
+function renderStory(){
+  if(!E$('extStoryBox')) return;
+  E$('extStoryBox').innerHTML = RIFT_STORY.map(s=>{
+    const open = (S.maxStage||1)>=s.stage; const read = !!S.ext.storyRead[s.ch];
+    return '<div class="row"><div class="info">'+(open?s.title:'🔒 ???')+'<small>'+(open?(read?'열람함':'첫 열람 시 조각+3'):'해금: 스테이지 '+s.stage)+'</small></div>'
+      + '<button '+(open?'':'disabled')+' onclick="readStory('+s.ch+')">'+(open?'읽기':'🔒')+'</button></div>';
+  }).join('');
+}
+
+/* ================================================================
+   9️⃣ 제작 시스템 (재료 → 커스텀 장비/물약)
+   ================================================================ */
+const CRAFT_RECIPES = [
+  {id:'cWpn1', name:'정제된 강철검',   type:'weapon', grade:'Epic',      gold:5000,    stones:10, shards:0,  stageReq:1,  mul:1.2},
+  {id:'cArm1', name:'정제된 강철갑주', type:'armor',  grade:'Epic',      gold:5000,    stones:10, shards:0,  stageReq:1,  mul:1.2},
+  {id:'cWpn2', name:'균열 합금검',     type:'weapon', grade:'Legendary', gold:80000,   stones:40, shards:15, stageReq:30, mul:1.35},
+  {id:'cArm2', name:'균열 합금갑주',   type:'armor',  grade:'Legendary', gold:80000,   stones:40, shards:15, stageReq:30, mul:1.35},
+  {id:'cWpn3', name:'차원 융합검',     type:'weapon', grade:'Mythic',    gold:1200000, stones:120,shards:50, stageReq:70, mul:1.5},
+  {id:'cPot',  name:'농축 공격 물약(30분)', type:'potion', gold:20000, stones:0, shards:5, stageReq:10},
+];
+function craftItem(id){
+  const r = CRAFT_RECIPES.find(x=>x.id===id); if(!r) return;
+  if((S.maxStage||1) < r.stageReq){ log('<span class="r">스테이지 '+r.stageReq+' 도달 후 제작 가능합니다.</span>'); return; }
+  if(S.gold < r.gold){ log('<span class="r">골드 부족 ('+fmt(r.gold)+'G)</span>'); return; }
+  if((S.stones||0) < r.stones){ log('<span class="r">강화석 부족 ('+r.stones+'개)</span>'); return; }
+  if((S.shards||0) < r.shards){ log('<span class="r">균열의 조각 부족 ('+r.shards+'개)</span>'); return; }
+  if(r.type==='potion'){
+    S.gold-=r.gold; S.shards-=r.shards;
+    S.potionUntil = Math.max(S.potionUntil||0, Date.now())+30*60000;
+    S.ext.craftCount++;
+    log('<span class="c">⚗️ '+r.name+' 제작·사용! 30분간 공격력 1.5배</span>');
+  } else {
+    const invCap = S.invCap||30;
+    if(S.equips.length >= invCap){ log('<span class="r">인벤토리가 가득 찼습니다! 정리 후 제작하세요.</span>'); return; }
+    S.gold-=r.gold; S.stones-=r.stones; S.shards-=r.shards;
+    const gm = Math.pow(2.4, GRADES.indexOf(r.grade));
+    const base = Math.round(10*Math.pow(1.18,(S.stage-1))*gm*r.mul);
+    const it = {id:S.nextId++, type:r.type, grade:r.grade, name:r.name, base, enh:0, opts:rollEquipOpts(r.grade)};
+    S.equips.push(it); S.ext.codexOwned[r.name]=true; if(r.type==='weapon') collAdd(r.name);
+    S.ext.craftCount++;
+    log('<span class="g">⚒️ <span class="'+(GRADE_CLS[r.grade]||'')+'">'+r.name+'</span> 제작 성공! (현재 스테이지 기준 성능)</span>');
+  }
+  extAddSeasonExp(10);
+  checkExtAch(); saveGame(true); renderCraft(); renderAll();
+}
+window.craftItem = craftItem;
+function renderCraft(){
+  if(!E$('extCraftBox')) return;
+  E$('extCraftBox').innerHTML = CRAFT_RECIPES.map(r=>{
+    const open = (S.maxStage||1)>=r.stageReq;
+    const cost = fmt(r.gold)+'G'+(r.stones?' · 강화석'+r.stones:'')+(r.shards?' · 조각'+r.shards:'');
+    return '<div class="row"><div class="info">'+(r.type==='potion'?'⚗️ ':'⚒️ ')+'<span class="'+(GRADE_CLS[r.grade]||'')+'">'+r.name+'</span>'
+      + '<small>'+cost+(open?'':' · 해금: 스테이지 '+r.stageReq)+'</small></div>'
+      + '<button class="gold-btn" '+(open?'':'disabled')+' onclick="craftItem(\''+r.id+'\')">'+(open?'제작':'🔒')+'</button></div>';
+  }).join('');
+}
+
+/* ================================================================
+   🔟 시즌 시스템 (월간 시즌 패스 · 정산 보상)
+   ================================================================ */
+const SEASON_NAMES = {1:'❄️ 설원',2:'🌨️ 잔설',3:'🌸 개화',4:'🌷 봄바람',5:'🌿 신록',6:'☔ 장마',7:'☀️ 작열',8:'🌊 파도',9:'🍂 낙엽',10:'🎃 수확',11:'🌫️ 안개',12:'🎄 성야'};
+function seasonExp(){ return S.ext.seasonExp||0; }
+function extAddSeasonExp(n){ if(!ensureExt()) return; S.ext.seasonExp=(S.ext.seasonExp||0)+n; }
+function seasonKills(){ return Math.max(0,(S.totalKills||0)-(S.ext.season.baseKills||0)); }
+function seasonLevel(){ return Math.min(20, 1+Math.floor((seasonKills()*0.2 + seasonExp())/100)); }
+function seasonRankName(){
+  const k = seasonKills();
+  if(k>=5000) return '💠 다이아';
+  if(k>=2000) return '🥇 골드';
+  if(k>=800)  return '🥈 실버';
+  if(k>=200)  return '🥉 브론즈';
+  return '🪨 아이언';
+}
+function seasonClaim(lv){
+  if(seasonLevel() < lv){ log('<span class="r">시즌 레벨이 부족합니다.</span>'); return; }
+  if(S.ext.season.claimed[lv]) return;
+  S.ext.season.claimed[lv]=true;
+  const g = Math.floor(BAL.goldDrop(S.stage)*20*lv);
+  S.gold+=g; recGold(g);
+  const sh = Math.ceil(lv/2); S.shards=(S.shards||0)+sh;
+  if(lv%5===0){ S.stones=(S.stones||0)+lv; }
+  log('<span class="g">🏅 시즌 Lv.'+lv+' 보상! +'+fmt(g)+'G · 조각+'+sh+(lv%5===0?' · 강화석+'+lv:'')+'</span>');
+  saveGame(true); renderSeason();
+}
+window.seasonClaim = seasonClaim;
+function renderSeason(){
+  if(!E$('extSeasonBox')) return;
+  const m = parseInt(seasonKey().split('-')[1]);
+  const lv = seasonLevel();
+  if(E$('extSeasonTxt')) E$('extSeasonTxt').textContent = seasonKey()+' '+(SEASON_NAMES[m]||'')+' 시즌 · Lv.'+lv+' · 랭크 '+seasonRankName();
+  let rows = '<div class="chips"><span class="chip">시즌 처치: <b>'+fmt(seasonKills())+'</b></span>'
+    + '<span class="chip">시즌 활동 EXP: <b>'+fmt(seasonExp())+'</b></span>'
+    + '<span class="chip">월말 정산: 조각 보너스</span></div>';
+  rows += '<div style="display:flex;flex-wrap:wrap;gap:4px;">';
+  for(let i=1;i<=20;i++){
+    const can = lv>=i && !S.ext.season.claimed[i];
+    const done = !!S.ext.season.claimed[i];
+    rows += '<button style="font-size:11px;padding:4px 7px;'+(done?'opacity:.4;':'')+(can?'border-color:var(--gold);color:var(--gold);':'')+'" '
+      + ((can)?'':'disabled ') + 'onclick="seasonClaim('+i+')">'+ (done?'✓':'Lv'+i) +'</button>';
+  }
+  rows += '</div><div class="notice" style="margin-top:6px;">활동(처치·보스·제작·챌린지)으로 시즌 레벨이 오릅니다. 5레벨마다 강화석 추가! 시즌은 매월 1일 초기화되며 이전 시즌 활동량만큼 정산 조각을 지급합니다.</div>';
+  E$('extSeasonBox').innerHTML = rows;
+}
+
+/* ---------- 통합 렌더 & 시동 ---------- */
+function renderExt(){
+  if(!ensureExt()) return;
+  const tab = E$('tab-ext');
+  if(!tab || !tab.classList.contains('on')) return;   // 탭 열려있을 때만
+  codexScan();
+  renderSeason(); renderWeekly(); renderBoss(); renderRaid();
+  renderHidden(); renderCraft(); renderStory(); renderCodex(); renderExtAch();
+}
+// 탭 클릭 시 즉시 렌더
+document.addEventListener('click', function(ev){
+  const b = ev.target.closest('[data-tab="ext"]');
+  if(b) setTimeout(renderExt, 30);
+});
+// 주기 갱신(가벼움: 탭 열려있을 때만 전체 렌더 + 업적/스캔은 5초마다)
+setInterval(function(){ try{ renderExt(); }catch(e){} }, 2000);
+setInterval(function(){ try{ if(ensureExt()){ codexScan(); checkExtAch(); } }catch(e){} }, 5000);
+// 게임 로드 대기 후 초기화
+const bootWait = setInterval(function(){
+  try{
+    if(typeof S!=='undefined' && S){
+      clearInterval(bootWait);
+      ensureExt(); codexScan(); checkExtAch();
+      log('<span class="p">🌌 모험+ 확장팩 로드 완료! (탭에서 확인하세요)</span>');
+    }
+  }catch(e){}
+}, 500);
+})();
 </script>
 
 <!-- 난이도 선택 모달 -->

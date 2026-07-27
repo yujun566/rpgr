@@ -4230,33 +4230,9 @@ function isPortrait(){
   return window.innerHeight > window.innerWidth;
 }
 
-// 가로화면 회전 안내 (폰 + 세로일 때만, 시작 시 1회)
+// 가로화면 회전 안내 — 🚫 비활성화됨 (사용자 요청: 세로에서도 안내 없이 바로 플레이)
 function showRotateHintIfNeeded(){
-  if(!isPhoneDevice()) return;          // 폰이 아니면 안내 안 함
-  if(!isPortrait()) return;             // 이미 가로면 안내 불필요
-  const el = document.getElementById('rotateHint');
-  if(!el) return;
-  // 현재 언어로 문구 반영
-  const txt = document.getElementById('rotateHintText');
-  if(txt && typeof t === 'function'){ txt.innerHTML = t('rotate_hint'); }
-  el.style.display = 'flex';
-
-  // 가로로 돌리면 자동으로 닫힘
-  const close = ()=>{
-    if(!isPortrait()){
-      el.style.display = 'none';
-      window.removeEventListener('orientationchange', onRot);
-      window.removeEventListener('resize', onRot);
-      try{ if(typeof renderAll==='function') renderAll(); }catch(e){}
-    }
-  };
-  const onRot = ()=> setTimeout(close, 250);
-  window.addEventListener('orientationchange', onRot);
-  window.addEventListener('resize', onRot);
-  // 탭하면(가로전환 대신) 그냥 닫을 수 있게 — 5초 후 탭으로 스킵 허용
-  setTimeout(()=>{
-    el.addEventListener('click', ()=>{ el.style.display='none'; }, {once:true});
-  }, 3000);
+  return;   // 회전 안내를 표시하지 않음
 }
 
 // ▶ 게임 시작 (전체화면 + 가로모드 고정)
@@ -4270,13 +4246,8 @@ async function startGameFullscreen(){
     else if(d.webkitRequestFullscreen) await d.webkitRequestFullscreen().catch(()=>{});
   }catch(e){}
 
-  // 2) 가로모드 고정
-  let lockedLandscape = false;
-  try{
-    if(screen.orientation && screen.orientation.lock){
-      await screen.orientation.lock('landscape').then(()=>{ lockedLandscape = true; }).catch(()=>{});
-    }
-  }catch(e){ console.log('가로모드 고정 미지원'); }
+  // 2) 가로모드 고정 — 🚫 비활성화됨 (사용자 요청: 세로/가로 자유롭게)
+  let lockedLandscape = true;   // 회전 안내도 뜨지 않도록 처리
 
   // 3) 오디오 활성화 (브라우저 정책상 사용자 입력 필요)
   try{
@@ -13920,6 +13891,606 @@ const boot2=setInterval(function(){
     }
   }catch(e){}
 }, 600);
+})();
+</script>
+
+<script>
+/* ================================================================
+   🎪 모험+ 확장팩 3탄 (10대 신규 시스템)
+   카드 컬렉션 / 농장 / 미궁 로그라이크 / 장비 세트 효과 / 유령 동료
+   / 주사위 보드게임 / 환생 특전 트리 / 도전 타워 / 가게 운영 / 몬스터 변신
+   ================================================================ */
+(function(){
+'use strict';
+function E$(id){ return document.getElementById(id); }
+function todayStr(){ return new Date().toDateString(); }
+function hashStr(s){ let h=0; for(let i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))>>>0; return h; }
+
+function x3(){
+  if(typeof S==='undefined'||!S) return null;
+  if(!S.x3) S.x3={};
+  const e=S.x3;
+  if(!e.cards) e.cards={};                                     // 보유 카드 {id:true}
+  if(e.dust==null) e.dust=0;                                   // 카드 가루
+  if(!e.cardClaim) e.cardClaim={};
+  if(!e.farm) e.farm=[null,null,null];                         // 밭 3칸 {seed, doneAt}
+  if(!e.maze) e.maze={run:null, day:'', n:0};
+  if(!e.ghosts) e.ghosts={};                                   // 포획한 유령 {이름:true}
+  if(!e.activeGhost) e.activeGhost=null;
+  if(!e.board) e.board={pos:0, day:'', used:0, jailed:false};
+  if(!e.perks) e.perks={atk:0,def:0,hp:0,gold:0,crit:0};
+  if(!e.chTower) e.chTower={cleared:{}};
+  if(!e.shopCd) e.shopCd=0;
+  if(!e.cust) e.cust=null;
+  if(!e.morph) e.morph=null;                                   // 변신 중인 몬스터명
+  return e;
+}
+
+/* ---------- 세트/특전/카드/유령/변신 → 스탯 후킹 ---------- */
+function eqOf(id){ return (S.equips||[]).find(x=>x.id===id)||null; }
+function setBonus(){
+  const w=eqOf(S.weapon), a=eqOf(S.armor);
+  if(!w||!a) return {mul:1, hp:1, name:null};
+  let mul=1, hp=1, name=null;
+  if(w.grade===a.grade && !w.dev){
+    const gi=GRADES.indexOf(w.grade);
+    if(gi>=0){ mul*=1+0.03*(gi+1); name=w.grade+' 세트 (공·방 +'+(3*(gi+1))+'%)'; }
+  }
+  if(String(w.name).includes('균열 합금') && String(a.name).includes('균열 합금')){
+    mul*=1.15; hp*=1.15; name=(name?name+' + ':'')+'균열 세트 (+15% 올스탯)';
+  }
+  return {mul, hp, name};
+}
+function cardTierBonus(){
+  const n=Object.keys((S.x3&&S.x3.cards)||{}).length;
+  return 1 + (n>=8?0.02:0) + (n>=16?0.02:0) + (n>=24?0.02:0);
+}
+function ghostBonus(){ return 1 + 0.02*Object.keys((S.x3&&S.x3.ghosts)||{}).length; }
+function morphEff(kind){
+  if(!S.x3||!S.x3.morph) return 0;
+  const k=['atk','def','hp','gold','crit'][hashStr(S.x3.morph)%5];
+  return k===kind ? (kind==='crit'?0.05:0.08) : 0;
+}
+function perkLv(k){ return (S.x3&&S.x3.perks&&S.x3.perks[k])||0; }
+const _a3=playerATK,_d3=playerDEF,_h3=playerMaxHP,_c3=critRate,_g3=goldMult;
+playerATK=function(){ let v=_a3(); if(!isFinite(v)) return v;
+  v*=setBonus().mul; v*=cardTierBonus(); v*=ghostBonus();
+  v*=1+0.03*perkLv('atk'); v*=1+morphEff('atk'); return Math.round(v); };
+playerDEF=function(){ let v=_d3(); if(!isFinite(v)) return v;
+  v*=setBonus().mul; v*=1+0.03*perkLv('def'); v*=1+morphEff('def'); return Math.round(v); };
+playerMaxHP=function(){ let v=_h3(); if(!isFinite(v)) return v;
+  v*=setBonus().hp; v*=1+0.03*perkLv('hp'); v*=1+morphEff('hp'); return Math.round(v); };
+critRate=function(){ let v=_c3(); v+=0.01*perkLv('crit'); v+=morphEff('crit'); return Math.min(0.95,v); };
+goldMult=function(){ let v=_g3(); v*=1+0.05*perkLv('gold'); v*=1+morphEff('gold');
+  const g=S.x3&&S.x3.activeGhost; if(g&&hashStr(g)%3===0) v*=1.08; return v; };
+
+/* ---------- 1️⃣ 카드 컬렉션 ---------- */
+const CARD_MONS=['슬라임','고블린','동굴 박쥐','들개 늑대','오크 전사','강철 골렘','리치','드레이크','균열 거신','바람 정령','원한의 유령','황금 미믹'];
+function cardList(){
+  const jobs=JOB_ORDER.slice(0,12).map(id=>({id:'j_'+id, name:JOBS[id].icon+' '+JOBS[id].name+' 카드', rare:JOBS[id].hidden?3:(JOBS[id].legend?2:1)}));
+  const mons=CARD_MONS.map((n,i)=>({id:'m_'+i, name:'🃏 '+n+' 카드', rare:i>=9?3:(i>=6?2:1)}));
+  return mons.concat(jobs);
+}
+function drawCard(premium){
+  const e=x3(); if(!e) return;
+  if(premium){ if((S.shards||0)<5){ log('<span class="r">조각 5개가 필요합니다.</span>'); return; } S.shards-=5; }
+  else { const c=Math.floor(BAL.goldDrop(S.stage)*8); if(S.gold<c){ log('<span class="r">골드 부족 ('+fmt(c)+'G)</span>'); return; } S.gold-=c; }
+  const pool=cardList().filter(c=> premium? c.rare>=2 : true);
+  const pick=pool[Math.floor(Math.random()*pool.length)];
+  if(e.cards[pick.id]){ const d=pick.rare*10; e.dust+=d; log('<span class="c">🃏 중복! ['+pick.name+'] → 가루 +'+d+'</span>'); }
+  else { e.cards[pick.id]=true; log('<span class="'+(pick.rare===3?'gP':pick.rare===2?'gL':'g')+'">🃏 신규 카드 획득! ['+pick.name+']</span>'); }
+  saveGame(true); renderCards();
+}
+function dustExchange(){
+  const e=x3(); if(!e) return;
+  if(e.dust<30){ log('<span class="r">가루 30이 필요합니다.</span>'); return; }
+  const miss=cardList().filter(c=>!e.cards[c.id]);
+  if(!miss.length){ log('<span class="y">모든 카드를 모았습니다!</span>'); return; }
+  e.dust-=30;
+  const pick=miss[Math.floor(Math.random()*miss.length)];
+  e.cards[pick.id]=true;
+  log('<span class="g">✨ 가루 교환! 미보유 카드 ['+pick.name+'] 획득!</span>');
+  saveGame(true); renderCards();
+}
+function cardClaimTier(t){
+  const e=x3(); if(!e||e.cardClaim[t]) return;
+  const n=Object.keys(e.cards).length, need={1:8,2:16,3:24}[t];
+  if(n<need){ log('<span class="r">카드 '+need+'종이 필요합니다.</span>'); return; }
+  e.cardClaim[t]=true;
+  const g=Math.floor(BAL.goldDrop(S.stage)*t*100); S.gold+=g; recGold(g); S.shards=(S.shards||0)+t*10;
+  log('<span class="g">🃏 컬렉션 '+need+'종 달성 보상! +'+fmt(g)+'G · 조각+'+(t*10)+' (영구 공격 +2%)</span>');
+  saveGame(true); renderCards();
+}
+window.drawCard=drawCard; window.dustExchange=dustExchange; window.cardClaimTier=cardClaimTier;
+function renderCards(){
+  if(!E$('x3CardBox')) return;
+  const e=x3(); const all=cardList(); const n=Object.keys(e.cards).length;
+  E$('x3CardTxt').textContent='('+n+'/'+all.length+'종 · 가루 '+e.dust+')';
+  const rc={1:'var(--txt)',2:'var(--gold)',3:'#ff2d95'};
+  E$('x3CardBox').innerHTML =
+    '<div class="row"><div class="info">카드팩 뽑기<small>일반: 골드 · 프리미엄(조각5): 희귀 이상 확정 · 8/16/24종마다 영구 공격+2%</small></div>'
+    +'<div style="display:flex;gap:4px;"><button onclick="drawCard(false)">일반팩</button><button class="gold-btn" onclick="drawCard(true)">프리미엄</button><button onclick="dustExchange()">가루교환(30)</button></div></div>'
+    +[1,2,3].map(t=>{ const need={1:8,2:16,3:24}[t]; const done=!!e.cardClaim[t]; const can=n>=need&&!done;
+      return '<button style="font-size:11px;margin:2px;'+(can?'border-color:var(--gold);color:var(--gold)':'')+'" '+(can?'':'disabled ')+'onclick="cardClaimTier('+t+')">'+(done?'✓':need+'종 보상')+'</button>'; }).join('')
+    +'<div style="max-height:130px;overflow-y:auto;border:1px dashed var(--line);padding:6px;margin-top:4px;">'
+    + all.map(c=>'<span style="display:inline-block;width:49%;font-size:11px;color:'+(e.cards[c.id]?rc[c.rare]:'var(--mut)')+';opacity:'+(e.cards[c.id]?1:.4)+'">'+(e.cards[c.id]?'◆':'◇')+' '+esc(c.name)+(c.rare===3?' ★':'')+'</span>').join('')+'</div>';
+}
+
+/* ---------- 2️⃣ 균열 농장 ---------- */
+const SEEDS={ goldberry:{n:'💰 골드열매', min:10, out:function(){const g=Math.floor(BAL.goldDrop(S.stage)*40*goldMult()); S.gold+=g; recGold(g); return '+'+fmt(g)+'G';}},
+              stoneroot:{n:'⛏️ 강화석뿌리', min:20, out:function(){S.stones=(S.stones||0)+8; return '강화석 +8';}},
+              herb:{n:'🌿 기운허브', min:30, out:function(){S.potionUntil=Math.max(S.potionUntil||0,Date.now())+15*60000; return '공격 물약 15분';}} };
+function plantSeed(i,sid){
+  const e=x3(); if(!e||e.farm[i]) return;
+  const c=Math.floor(BAL.goldDrop(S.stage)*3);
+  if(S.gold<c){ log('<span class="r">씨앗값 부족 ('+fmt(c)+'G)</span>'); return; }
+  S.gold-=c; e.farm[i]={seed:sid, doneAt:Date.now()+SEEDS[sid].min*60000};
+  log('<span class="c">🌱 '+SEEDS[sid].n+' 씨앗을 심었습니다 ('+SEEDS[sid].min+'분)</span>');
+  saveGame(true); renderFarm();
+}
+function harvest(i){
+  const e=x3(); const p=e&&e.farm[i]; if(!p) return;
+  if(Date.now()<p.doneAt){ log('<span class="y">아직 자라는 중입니다.</span>'); return; }
+  const r=SEEDS[p.seed].out(); e.farm[i]=null;
+  log('<span class="g">🧺 수확! '+SEEDS[p.seed].n+' → '+r+'</span>');
+  saveGame(true); renderFarm(); renderAll();
+}
+window.plantSeed=plantSeed; window.harvest=harvest;
+function renderFarm(){
+  if(!E$('x3FarmBox')) return;
+  const e=x3();
+  E$('x3FarmBox').innerHTML = e.farm.map(function(p,i){
+    if(!p){
+      return '<div class="row"><div class="info">🟫 빈 밭 '+(i+1)+'<small>씨앗을 골라 심으세요</small></div><div style="display:flex;gap:3px;">'
+        +Object.entries(SEEDS).map(function(pr){ return '<button style="font-size:10px;padding:3px 6px" onclick="plantSeed('+i+',\''+pr[0]+'\')">'+pr[1].n+'('+pr[1].min+'분)</button>'; }).join('')+'</div></div>';
+    }
+    const left=p.doneAt-Date.now(); const ready=left<=0;
+    return '<div class="row"><div class="info">'+(ready?'🌾':'🌱')+' '+SEEDS[p.seed].n+'<small>'+(ready?'수확 가능!':Math.ceil(left/60000)+'분 남음')+'</small></div>'
+      +'<button class="gold-btn" '+(ready?'':'disabled')+' onclick="harvest('+i+')">🧺 수확</button></div>';
+  }).join('');
+}
+
+/* ---------- 3️⃣ 미궁 로그라이크 ---------- */
+function mazeStart(){
+  const e=x3(); if(!e) return;
+  if(e.maze.day!==todayStr()){ e.maze.day=todayStr(); e.maze.n=0; }
+  if(e.maze.run){ log('<span class="y">이미 탐사 중입니다.</span>'); return; }
+  if(e.maze.n>=3){ log('<span class="r">오늘의 미궁 입장 횟수(3회)를 모두 썼습니다.</span>'); return; }
+  e.maze.n++; e.maze.run={depth:0, gold:0, shards:0, stones:0};
+  log('<span class="c">🌀 뒤틀린 미궁에 들어섰습니다...</span>');
+  saveGame(true); renderMaze();
+}
+function mazeRooms(){
+  const t=['fight','fight','treasure','trap','rest','merchant'];
+  const out=[]; while(out.length<3){ const p=t[Math.floor(Math.random()*t.length)]; if(out.indexOf(p)<0) out.push(p); }
+  return out;
+}
+let _mazeChoices=null;
+function mazePick(type){
+  const e=x3(); const r=e&&e.maze.run; if(!r) return;
+  r.depth++;
+  const d=r.depth;
+  const atk=playerATK(), def=playerDEF(), hp=playerMaxHP();
+  if(type==='fight'){
+    const foeHp=BAL.monsterHP(Math.min(200,S.stage+d*3))*4*d, foeAtk=BAL.monsterATK(Math.min(200,S.stage+d*3))*2;
+    const winT=foeHp/Math.max(1,atk*2), dieT=hp/Math.max(1,foeAtk-def*0.7);
+    if(!isFinite(atk) || dieT>winT){
+      const g=Math.floor(BAL.goldDrop(S.stage)*6*d*goldMult()); r.gold+=g; r.shards+=1;
+      log('<span class="g">⚔️ 심층 '+d+' 전투 승리! (임시 골드 +'+fmt(g)+' · 조각+1)</span>');
+      if(Math.random()<0.12){ window.__x3GhostCapture('미궁의 원혼 Lv'+d); }
+    } else {
+      log('<span class="r">💀 심층 '+d+'에서 쓰러졌습니다... 모은 전리품을 모두 잃었습니다!</span>');
+      e.maze.run=null; saveGame(true); renderMaze(); return;
+    }
+  } else if(type==='treasure'){
+    const g=Math.floor(BAL.goldDrop(S.stage)*10*d*goldMult()); r.gold+=g; r.stones+=2;
+    log('<span class="g">💎 보물 상자! (임시 골드 +'+fmt(g)+' · 강화석+2)</span>');
+  } else if(type==='trap'){
+    if(Math.random()<0.5){ const lose=Math.floor(r.gold*0.3); r.gold-=lose; log('<span class="r">🕸️ 함정! 임시 골드 '+fmt(lose)+' 손실...</span>'); }
+    else { log('<span class="c">🕸️ 함정을 가뿐히 회피!</span>'); r.shards+=2; }
+  } else if(type==='rest'){
+    log('<span class="c">🔥 모닥불에서 한숨 돌렸습니다.</span>'); r.stones+=1;
+  } else if(type==='merchant'){
+    const g=Math.floor(BAL.goldDrop(S.stage)*4*d);
+    if(r.gold>=g){ r.gold-=g; r.shards+=3; log('<span class="g">🧙 수상한 상인과 거래: 임시골드 '+fmt(g)+' → 조각+3</span>'); }
+    else log('<span class="mut">🧙 상인이 코웃음 치며 지나갑니다 (골드 부족)</span>');
+  }
+  _mazeChoices=null; saveGame(true); renderMaze();
+}
+function mazeEscape(){
+  const e=x3(); const r=e&&e.maze.run; if(!r) return;
+  S.gold+=r.gold; recGold(r.gold); S.shards=(S.shards||0)+r.shards; S.stones=(S.stones||0)+r.stones;
+  log('<span class="gP">🏃 미궁 탈출! 확정 획득: +'+fmt(r.gold)+'G · 조각+'+r.shards+' · 강화석+'+r.stones+' (심층 '+r.depth+')</span>');
+  try{ if(S.ext) S.ext.seasonExp=(S.ext.seasonExp||0)+r.depth*3; }catch(err){}
+  e.maze.run=null; saveGame(true); renderMaze(); renderAll();
+}
+window.mazeStart=mazeStart; window.mazePick=mazePick; window.mazeEscape=mazeEscape;
+const ROOM_ICON={fight:'⚔️ 전투', treasure:'💎 보물방', trap:'🕸️ 수상한 통로', rest:'🔥 모닥불', merchant:'🧙 떠돌이 상인'};
+function renderMaze(){
+  if(!E$('x3MazeBox')) return;
+  const e=x3(); const r=e.maze.run;
+  if(!r){
+    const left=3-(e.maze.day===todayStr()?e.maze.n:0);
+    E$('x3MazeBox').innerHTML='<div class="row"><div class="info">뒤틀린 미궁 입장<small>오늘 남은 횟수: '+left+'/3 · 죽으면 전리품 몰수, 탈출하면 확정!</small></div>'
+      +'<button '+(left>0?'':'disabled')+' onclick="mazeStart()">🌀 입장</button></div>';
+    return;
+  }
+  if(!_mazeChoices) _mazeChoices=mazeRooms();
+  E$('x3MazeBox').innerHTML =
+    '<div class="chips"><span class="chip">심층 <b>'+r.depth+'</b></span><span class="chip">임시골드 <b>'+fmt(r.gold)+'</b></span><span class="chip">조각 <b>'+r.shards+'</b></span><span class="chip">강화석 <b>'+r.stones+'</b></span></div>'
+    +'<div style="font-size:11px;color:var(--cyan);margin:4px 0;">갈림길이 나타났다. 어디로 가시겠습니까?</div>'
+    +'<div style="display:flex;gap:4px;flex-wrap:wrap;">'
+    +_mazeChoices.map(function(t){ return '<button onclick="mazePick(\''+t+'\')">'+ROOM_ICON[t]+'</button>'; }).join('')
+    +'<button class="gold-btn" onclick="mazeEscape()">🏃 탈출 (확정 획득)</button></div>';
+}
+
+/* ---------- 5️⃣ 유령 동료 ---------- */
+function ghostCapture(name){
+  const e=x3(); if(!e||e.ghosts[name]) return;
+  e.ghosts[name]=true;
+  log('<span class="gP">👻 유령 동료 ['+esc(name)+'] 포획! (보유 유령당 공격 +2%)</span>');
+  try{ if(typeof showToast==='function') showToast('👻 유령 포획!<br><span style="font-size:11px">'+esc(name)+'</span>','gacha',3000); }catch(err){}
+}
+window.__x3GhostCapture = ghostCapture;
+function summonGhost(){
+  const e=x3(); if(!e) return;
+  const mastered=Object.entries((S.x2&&S.x2.mobKills)||{}).filter(function(pr){ return pr[1]>=100 && !e.ghosts['정복혼: '+pr[0]]; });
+  if(!mastered.length){ log('<span class="r">소환 의식 가능한 영혼이 없습니다. (도감 100마리 정복 몬스터 필요)</span>'); return; }
+  if((S.shards||0)<10){ log('<span class="r">조각 10개가 필요합니다.</span>'); return; }
+  S.shards-=10;
+  ghostCapture('정복혼: '+mastered[0][0]);
+  saveGame(true); renderGhost();
+}
+function setActiveGhost(name){
+  const e=x3(); if(!e) return;
+  e.activeGhost = e.activeGhost===name? null : name;
+  log('<span class="c">👻 동행 유령: '+(e.activeGhost?esc(e.activeGhost):'없음')+'</span>');
+  saveGame(true); renderGhost();
+}
+window.summonGhost=summonGhost; window.setActiveGhost=setActiveGhost;
+setInterval(function(){ try{
+  const e=x3(); if(!e||!e.activeGhost) return;
+  if(typeof battleMode!=='undefined' && battleMode!=='field') return;
+  if(typeof mob==='undefined'||!mob||mob.hp<=0) return;
+  if(Math.random()<0.5) skillDamage(0.6,'👻 '+e.activeGhost);
+}catch(err){} }, 5000);
+function renderGhost(){
+  if(!E$('x3GhostBox')) return;
+  const e=x3(); const names=Object.keys(e.ghosts);
+  E$('x3GhostTxt').textContent='(보유 '+names.length+' · 공격 +'+(names.length*2)+'%)';
+  E$('x3GhostBox').innerHTML =
+    '<div class="row"><div class="info">영혼 소환 의식<small>도감 100마리 정복 몬스터의 혼을 조각 10으로 소환 · 미궁 전투에서도 확률 포획</small></div><button onclick="summonGhost()">🕯️ 의식(조각10)</button></div>'
+    +(names.length? names.map(function(n){ return '<div class="row"><div class="info">👻 '+esc(n)+'<small>'+(e.activeGhost===n?'동행 중 — 5초마다 지원 공격!':'클릭하여 동행')+'</small></div>'
+      +'<button onclick="setActiveGhost(\''+n.replace(/'/g,"\\'")+'\')" style="'+(e.activeGhost===n?'border-color:var(--green);color:var(--green)':'')+'">'+(e.activeGhost===n?'동행중':'동행')+'</button></div>'; }).join('')
+      : '<div class="notice" style="margin-top:4px">아직 포획한 유령이 없습니다.</div>');
+}
+
+/* ---------- 6️⃣ 주사위 보드게임 ---------- */
+const BOARD=[ '🏠출발(+골드)','💰골드','⛏️강화석','🃏카드가루','💎조각','🕳️함정(꽝)','🐟물고기','💰골드',
+              '🚔감옥(1회쉼)','⛏️강화석','🎁랜덤','💰골드','💎조각','🕳️함정(꽝)','🃏카드가루','🎰잭팟!'];
+function rollBoard(){
+  const e=x3(); if(!e) return;
+  if(e.board.day!==todayStr()){ e.board.day=todayStr(); e.board.used=0; }
+  if(e.board.used>=3){ log('<span class="r">오늘의 주사위(3회)를 모두 굴렸습니다.</span>'); return; }
+  e.board.used++;
+  if(e.board.jailed){ e.board.jailed=false; log('<span class="y">🚔 감옥에서 하루 쉬었습니다... (이번 굴림 소모)</span>'); saveGame(true); renderBoard(); return; }
+  const d=1+Math.floor(Math.random()*6);
+  e.board.pos=(e.board.pos+d)%16;
+  log('<span class="c">🎲 '+d+'! → ['+BOARD[e.board.pos]+']</span>');
+  const base=BAL.goldDrop(S.stage);
+  switch(e.board.pos){
+    case 0:{ const g=Math.floor(base*30*goldMult()); S.gold+=g; recGold(g); log('<span class="g">🏠 한 바퀴! +'+fmt(g)+'G</span>'); break; }
+    case 5: case 13: log('<span class="mut">🕳️ 꽝! 아무 일도 없었다...</span>'); break;
+    case 8: e.board.jailed=true; log('<span class="r">🚔 감옥행! 다음 굴림은 쉬어갑니다.</span>'); break;
+    case 3: case 14: e.dust+=15; log('<span class="g">🃏 카드 가루 +15</span>'); break;
+    case 4: case 12: S.shards=(S.shards||0)+5; log('<span class="g">💎 조각 +5</span>'); break;
+    case 2: case 9: S.stones=(S.stones||0)+6; log('<span class="g">⛏️ 강화석 +6</span>'); break;
+    case 6: if(S.x2&&S.x2.fish){ S.x2.fish.n+=3; S.x2.fish.total+=3; } log('<span class="g">🐟 물고기 +3</span>'); break;
+    case 10:{ if(Math.random()<0.5){ const g=Math.floor(base*20*goldMult()); S.gold+=g; recGold(g); log('<span class="g">🎁 +'+fmt(g)+'G</span>'); } else { S.shards=(S.shards||0)+8; log('<span class="g">🎁 조각 +8</span>'); } break; }
+    case 15:{ const g=Math.floor(base*80*goldMult()); S.gold+=g; recGold(g); S.shards=(S.shards||0)+10; log('<span class="gP">🎰 잭팟!! +'+fmt(g)+'G · 조각+10</span>'); break; }
+    default:{ const g=Math.floor(base*12*goldMult()); S.gold+=g; recGold(g); log('<span class="g">💰 +'+fmt(g)+'G</span>'); }
+  }
+  saveGame(true); renderBoard(); renderAll();
+}
+window.rollBoard=rollBoard;
+function renderBoard(){
+  if(!E$('x3BoardBox')) return;
+  const e=x3();
+  const left=3-(e.board.day===todayStr()?e.board.used:0);
+  E$('x3BoardBox').innerHTML =
+    '<div style="display:flex;flex-wrap:wrap;gap:2px;margin-bottom:4px;">'+BOARD.map(function(t,i){ return '<span style="font-size:10px;border:1px solid '+(i===e.board.pos?'var(--gold)':'var(--line)')+';padding:3px 4px;'+(i===e.board.pos?'color:var(--gold);background:var(--panel2);':'color:var(--mut);')+'">'+(i===e.board.pos?'🎯':'')+t+'</span>'; }).join('')+'</div>'
+    +'<div class="row"><div class="info">주사위 굴리기<small>오늘 남음: '+left+'/3'+(e.board.jailed?' · 🚔 감옥 수감 중!':'')+'</small></div><button '+(left>0?'':'disabled')+' onclick="rollBoard()">🎲 굴리기</button></div>';
+}
+
+/* ---------- 7️⃣ 환생 특전 트리 ---------- */
+const PERK_INFO={atk:['⚔️','공격 특전','+3%/Lv'],def:['🛡️','방어 특전','+3%/Lv'],hp:['❤️','생명 특전','+3%/Lv'],gold:['💰','재물 특전','+5%/Lv'],crit:['🎯','절명 특전','치명 +1%p/Lv']};
+function perkSpent(){ const p=x3().perks; return p.atk+p.def+p.hp+p.gold+p.crit; }
+function perkAvail(){ return Math.max(0,(S.rebirths||0)-perkSpent()); }
+function buyPerk(k){
+  const e=x3(); if(!e) return;
+  if(e.perks[k]>=5){ log('<span class="y">이미 최대 레벨(5)입니다.</span>'); return; }
+  if(perkAvail()<1){ log('<span class="r">특전 포인트가 없습니다. (환생 1회당 1포인트)</span>'); return; }
+  e.perks[k]++;
+  log('<span class="g">🌟 '+PERK_INFO[k][1]+' Lv.'+e.perks[k]+' 습득!</span>');
+  saveGame(true); renderPerks(); if(typeof renderStats==='function') renderStats();
+}
+window.buyPerk=buyPerk;
+function renderPerks(){
+  if(!E$('x3PerkBox')) return;
+  const e=x3();
+  E$('x3PerkTxt').textContent='(포인트 '+perkAvail()+' · 환생 1회당 +1)';
+  E$('x3PerkBox').innerHTML = Object.entries(PERK_INFO).map(function(pr){
+    const k=pr[0], inf=pr[1];
+    return '<div class="row"><div class="info">'+inf[0]+' '+inf[1]+' <b style="color:var(--gold)">Lv.'+e.perks[k]+'/5</b><small>'+inf[2]+' · 환생해도 유지</small></div>'
+    +'<button class="gold-btn" '+(e.perks[k]>=5||perkAvail()<1?'disabled':'')+' onclick="buyPerk(\''+k+'\')">습득</button></div>'; }).join('');
+}
+
+/* ---------- 8️⃣ 도전 타워 (변칙 룰) ---------- */
+const CH_FLOORS=[
+  {f:1, rule:'평범한 시작', atkM:1, hpM:1, foe:2},
+  {f:2, rule:'공격력 70% 제한', atkM:0.7, hpM:1, foe:3},
+  {f:3, rule:'HP 절반', atkM:1, hpM:0.5, foe:4},
+  {f:4, rule:'공격력 50% 제한', atkM:0.5, hpM:1, foe:5},
+  {f:5, rule:'유리몸 (HP 25%)', atkM:1, hpM:0.25, foe:7},
+  {f:6, rule:'무딘 칼날 (공격 40%)', atkM:0.4, hpM:1, foe:8},
+  {f:7, rule:'이중고 (공격·HP 60%)', atkM:0.6, hpM:0.6, foe:10},
+  {f:8, rule:'HP 1 (선공 필승 판정)', atkM:1, hpM:0.02, foe:12},
+  {f:9, rule:'봉인된 힘 (공격 30%)', atkM:0.3, hpM:1, foe:15},
+  {f:10,rule:'모든 것이 절반', atkM:0.5, hpM:0.5, foe:20},
+];
+function chTowerFight(f){
+  const e=x3(); if(!e) return;
+  const fl=CH_FLOORS.find(function(x){ return x.f===f; }); if(!fl) return;
+  if(f>1 && !e.chTower.cleared[f-1]){ log('<span class="r">'+(f-1)+'층을 먼저 클리어하세요.</span>'); return; }
+  const atk=playerATK(); if(!isFinite(atk)){ log('<span class="r">개발자 장비 사용 불가.</span>'); return; }
+  const myAtk=atk*fl.atkM, myHp=playerMaxHP()*fl.hpM, def=playerDEF();
+  const st=Math.min(200,(S.maxStage||1));
+  const foeHp=BAL.monsterHP(st)*fl.foe*8, foeAtk=BAL.monsterATK(st)*fl.foe*0.9;
+  const winT=foeHp/Math.max(1,myAtk*2), dieT=myHp/Math.max(0.5,foeAtk-def*0.7);
+  if(dieT>winT){
+    const first=!e.chTower.cleared[f];
+    e.chTower.cleared[f]=true;
+    if(first){
+      const g=Math.floor(BAL.goldDrop(S.stage)*f*40); S.gold+=g; recGold(g); S.shards=(S.shards||0)+f*3;
+      log('<span class="gP">🗼 도전 타워 '+f+'층 ['+fl.rule+'] 첫 클리어! +'+fmt(g)+'G · 조각+'+(f*3)+'</span>');
+      if(f===10) ghostCapture('타워의 지배자');
+    } else log('<span class="g">🗼 '+f+'층 재클리어! (첫 클리어 보상은 1회)</span>');
+  } else {
+    log('<span class="r">🗼 '+f+'층 ['+fl.rule+'] 패배... (판정: 생존 '+dieT.toFixed(1)+'s / 필요 '+winT.toFixed(1)+'s)</span>');
+  }
+  saveGame(true); renderChTower();
+}
+window.chTowerFight=chTowerFight;
+function renderChTower(){
+  if(!E$('x3ChBox')) return;
+  const e=x3();
+  E$('x3ChBox').innerHTML = CH_FLOORS.map(function(fl){
+    const done=!!e.chTower.cleared[fl.f];
+    const open=fl.f===1||!!e.chTower.cleared[fl.f-1];
+    return '<div class="row" style="opacity:'+(open?1:.5)+'"><div class="info">'+(done?'✅':'🗼')+' '+fl.f+'층 — '+fl.rule+'<small>첫 클리어: 골드 + 조각'+(fl.f*3)+(fl.f===10?' + 👻특별 유령':'')+'</small></div>'
+      +'<button '+(open?'':'disabled')+' onclick="chTowerFight('+fl.f+')">'+(done?'재도전':'도전')+'</button></div>'; }).join('');
+}
+
+/* ---------- 9️⃣ 가게 운영 ---------- */
+const CUSTOMERS=['수줍은 견습 기사','깐깐한 귀족 부인','호탕한 용병 대장','수상한 후드의 남자','들뜬 신혼 모험가','구두쇠 상단주'];
+function openShopX(){
+  const e=x3(); if(!e) return;
+  if(Date.now()<e.shopCd){ log('<span class="c">🛎️ '+Math.ceil((e.shopCd-Date.now())/1000)+'초 후 다음 손님이 옵니다.</span>'); return; }
+  if(e.cust){ log('<span class="y">이미 손님이 기다리고 있습니다!</span>'); return; }
+  const sellable=(S.equips||[]).filter(function(it){ return !it.dev && it.id!==S.weapon && it.id!==S.armor; });
+  if(!sellable.length){ log('<span class="r">팔 수 있는 장비가 없습니다. (장착 중·개발자 장비 제외)</span>'); return; }
+  const it=sellable[Math.floor(Math.random()*sellable.length)];
+  const mul=1.5+Math.random()*2;
+  e.cust={itemId:it.id, offer:Math.floor(it.base*2*mul), name:CUSTOMERS[Math.floor(Math.random()*CUSTOMERS.length)], haggled:false};
+  e.shopCd=Date.now()+60000;
+  log('<span class="c">🛎️ 손님 ['+e.cust.name+'] 왈: "그 '+esc(it.name)+' 파시오!"</span>');
+  saveGame(true); renderShopX();
+}
+function custDeal(mode){
+  const e=x3(); const cst=e&&e.cust; if(!cst) return;
+  const idx=(S.equips||[]).findIndex(function(it){ return it.id===cst.itemId; });
+  if(idx<0){ e.cust=null; renderShopX(); return; }
+  const it=S.equips[idx];
+  if(mode==='accept'){
+    S.equips.splice(idx,1); S.gold+=cst.offer; recGold(cst.offer);
+    log('<span class="g">🤝 ['+esc(it.name)+'] 판매 완료! +'+fmt(cst.offer)+'G</span>');
+    e.cust=null;
+  } else if(mode==='haggle'){
+    if(cst.haggled){ log('<span class="y">이미 흥정했습니다. 결정하세요!</span>'); return; }
+    cst.haggled=true;
+    if(Math.random()<0.6){ cst.offer=Math.floor(cst.offer*1.4); log('<span class="g">💬 흥정 성공! 제시가가 '+fmt(cst.offer)+'G로 올랐습니다!</span>'); }
+    else { log('<span class="r">💬 "장난하시오?!" 손님이 화내며 떠났습니다...</span>'); e.cust=null; }
+  } else { log('<span class="mut">손님을 정중히 돌려보냈습니다.</span>'); e.cust=null; }
+  saveGame(true); renderShopX(); renderAll();
+}
+window.openShopX=openShopX; window.custDeal=custDeal;
+function renderShopX(){
+  if(!E$('x3ShopBox')) return;
+  const e=x3();
+  if(!e.cust){
+    E$('x3ShopBox').innerHTML='<div class="row"><div class="info">🛎️ 가게 문 열기<small>손님이 인벤토리 장비를 시세보다 비싸게 사갑니다 (60초 쿨)</small></div><button onclick="openShopX()">개점!</button></div>';
+    return;
+  }
+  const it=(S.equips||[]).find(function(x){ return x.id===e.cust.itemId; });
+  if(!it){ e.cust=null; renderShopX(); return; }
+  E$('x3ShopBox').innerHTML =
+    '<div style="border:1px solid var(--gold);padding:8px;background:var(--panel2);font-size:12px;">'
+    +'🧍 <b>'+esc(e.cust.name)+'</b>: "<span class="'+(GRADE_CLS[it.grade]||'')+'">'+esc(it.name)+'</span>을(를) <b style="color:var(--gold)">'+fmt(e.cust.offer)+'G</b>에 사고 싶소!"'
+    +'<div style="display:flex;gap:4px;margin-top:6px;">'
+    +'<button class="gold-btn" onclick="custDeal(\'accept\')">🤝 판매</button>'
+    +'<button onclick="custDeal(\'haggle\')" '+(e.cust.haggled?'disabled':'')+'>💬 흥정 (+40% 도전)</button>'
+    +'<button onclick="custDeal(\'refuse\')">거절</button></div></div>';
+}
+
+/* ---------- 🔟 몬스터 변신 ---------- */
+function morphInto(name){
+  const e=x3(); if(!e) return;
+  e.morph = e.morph===name? null : name;
+  if(e.morph){
+    const k=['공격 +8%','방어 +8%','HP +8%','골드 +8%','치명타 +5%p'][hashStr(name)%5];
+    log('<span class="gP">🎭 ['+esc(name)+'](으)로 변신! 고유 패시브: '+k+'</span>');
+  } else log('<span class="c">🎭 변신 해제 — 본모습으로 돌아왔습니다.</span>');
+  saveGame(true); renderMorph(); if(typeof renderStats==='function') renderStats();
+}
+window.morphInto=morphInto;
+function renderMorph(){
+  if(!E$('x3MorphBox')) return;
+  const e=x3();
+  const mastered=Object.entries((S.x2&&S.x2.mobKills)||{}).filter(function(pr){ return pr[1]>=100; }).map(function(pr){ return pr[0]; });
+  E$('x3MorphBox').innerHTML = mastered.length? mastered.map(function(n){
+    const on=e.morph===n;
+    const k=['공격 +8%','방어 +8%','HP +8%','골드 +8%','치명 +5%p'][hashStr(n)%5];
+    return '<div class="row"><div class="info">'+(on?'🎭 ':'')+esc(n)+'<small>패시브: '+k+(on?' · 변신 중!':'')+'</small></div>'
+      +'<button onclick="morphInto(\''+n.replace(/'/g,"\\'")+'\')" style="'+(on?'border-color:var(--rift);color:var(--rift)':'')+'">'+(on?'해제':'변신')+'</button></div>'; }).join('')
+    : '<div class="notice" style="margin-top:0">도감에서 100마리 정복한 몬스터가 생기면 변신할 수 있습니다.</div>';
+}
+
+/* ---------- UI 주입 + 통합 렌더 + 시동 ---------- */
+function injectUI3(){
+  const tab=E$('tab-ext'); if(!tab||E$('x3CardBox')) return;
+  tab.insertAdjacentHTML('beforeend',
+   '<h2 style="margin-top:14px;">🃏 카드 컬렉션 <span id="x3CardTxt" style="color:var(--mut);font-size:12px;"></span></h2><div id="x3CardBox"></div>'
+  +'<h2 style="margin-top:12px;">🌾 균열 농장</h2><div id="x3FarmBox"></div>'
+  +'<h2 style="margin-top:12px;">🌀 뒤틀린 미궁 <span style="color:var(--mut);font-size:12px;">(로그라이크)</span></h2><div id="x3MazeBox"></div>'
+  +'<h2 style="margin-top:12px;">🧩 장비 세트 효과 <span id="x3SetTxt" style="color:var(--gold);font-size:12px;"></span></h2>'
+  +'<div class="notice" id="x3SetInfo" style="margin:0 0 6px;"></div>'
+  +'<h2 style="margin-top:12px;">👻 유령 동료 <span id="x3GhostTxt" style="color:var(--mut);font-size:12px;"></span></h2><div id="x3GhostBox"></div>'
+  +'<h2 style="margin-top:12px;">🎲 균열 보드게임</h2><div id="x3BoardBox"></div>'
+  +'<h2 style="margin-top:12px;">🌟 환생 특전 트리 <span id="x3PerkTxt" style="color:var(--gold);font-size:12px;"></span></h2><div id="x3PerkBox"></div>'
+  +'<h2 style="margin-top:12px;">🗼 도전 타워 <span style="color:var(--mut);font-size:12px;">(변칙 룰)</span></h2><div id="x3ChBox"></div>'
+  +'<h2 style="margin-top:12px;">🛎️ 가게 운영 <span style="color:var(--mut);font-size:12px;">(만물상의 본업!)</span></h2><div id="x3ShopBox"></div>'
+  +'<h2 style="margin-top:12px;">🎭 몬스터 변신</h2><div id="x3MorphBox"></div>');
+}
+function renderX3(){
+  if(!x3()) return;
+  injectUI3();
+  const tab=E$('tab-ext');
+  if(!tab||!tab.classList.contains('on')) return;
+  renderCards(); renderFarm(); renderMaze(); renderGhost(); renderBoard();
+  renderPerks(); renderChTower(); renderShopX(); renderMorph();
+  const sb=setBonus();
+  if(E$('x3SetTxt')) E$('x3SetTxt').textContent = sb.name? '활성!' : '';
+  if(E$('x3SetInfo')) E$('x3SetInfo').innerHTML = sb.name? '🧩 <b style="color:var(--gold)">'+sb.name+'</b>' : '같은 등급의 무기+방어구를 장착하면 세트 효과! (등급이 높을수록 강력, "균열 합금" 제작 세트는 +15% 올스탯 추가)';
+}
+document.addEventListener('click', function(ev){
+  if(ev.target.closest('[data-tab="ext"]')) setTimeout(renderX3, 90);
+});
+setInterval(function(){ try{ renderX3(); }catch(e){} }, 3000);
+const boot3=setInterval(function(){
+  try{
+    if(typeof S!=='undefined'&&S){
+      clearInterval(boot3);
+      x3(); injectUI3();
+      log('<span class="p">🎪 확장팩 3탄 로드! 카드·농장·미궁·세트·유령·보드게임·특전·도전타워·가게운영·변신 추가!</span>');
+    }
+  }catch(e){}
+}, 700);
+})();
+</script>
+
+<script>
+/* ================================================================
+   📑 모험+ 탭 UI 개선: 접이식 섹션 + 상단 고정 바로가기
+   - 모든 섹션(h2)이 접혔다 펼쳐짐 (제목 클릭)
+   - 상단 고정 내비 칩 클릭 → 해당 섹션 펼치고 스크롤
+   - 기본은 전부 접힘 → 탭이 짧고 한눈에 보임
+   ================================================================ */
+(function(){
+'use strict';
+const OPEN = {};   // 섹션 펼침 상태 (세션 동안 기억)
+
+const css = document.createElement('style');
+css.textContent =
+  '#extNav{position:sticky;top:0;z-index:50;background:var(--panel,#141428);border:1px solid var(--line);padding:6px;margin-bottom:8px;display:flex;flex-wrap:wrap;gap:4px;}'
++ '#extNav button{font-size:10px;padding:3px 7px;}'
++ '#extNav .navAll{border-color:var(--gold);color:var(--gold);}'
++ '#tab-ext h2.extSec{cursor:pointer;user-select:none;border:1px solid var(--line);padding:7px 9px;margin:6px 0 0;background:var(--panel2,rgba(255,255,255,.03));scroll-margin-top:52px;display:flex;justify-content:space-between;align-items:center;gap:6px;}'
++ '#tab-ext h2.extSec:hover{border-color:var(--rift,#a06bff);}'
++ '#tab-ext h2.extSec .secArrow{font-size:11px;color:var(--mut);flex-shrink:0;}'
++ '#tab-ext .extBody{padding:4px 2px 8px;}'
++ '#tab-ext .extBody.folded{display:none;}';
+document.head.appendChild(css);
+
+function h2Title(h2){
+  for(const n of h2.childNodes){ if(n.nodeType===3 && n.nodeValue.trim()) return n.nodeValue.trim(); }
+  return h2.textContent.trim().slice(0,20);
+}
+function setOpen(h2, open){
+  const body=h2._extBody; if(!body) return;
+  OPEN[h2._extKey]=open;
+  body.classList.toggle('folded', !open);
+  if(h2._extArrow) h2._extArrow.textContent = open?'▾ 접기':'▸ 펼치기';
+}
+function organize(){
+  const tab=document.getElementById('tab-ext'); if(!tab) return;
+  let changed=false;
+  // 아직 처리 안 된 h2들을 찾아 섹션화
+  const h2s=[...tab.querySelectorAll(':scope > h2:not(.extSec)')];
+  for(const h2 of h2s){
+    changed=true;
+    h2.classList.add('extSec');
+    const key=h2Title(h2);
+    h2._extKey=key;
+    // 화살표 표시
+    const arrow=document.createElement('span');
+    arrow.className='secArrow';
+    h2.appendChild(arrow);
+    h2._extArrow=arrow;
+    // h2 다음 형제들을 다음 h2 전까지 body로 감싸기
+    const body=document.createElement('div');
+    body.className='extBody';
+    let n=h2.nextSibling;
+    while(n && !(n.nodeType===1 && n.tagName==='H2')){
+      const next=n.nextSibling;
+      body.appendChild(n);
+      n=next;
+    }
+    h2.parentNode.insertBefore(body, n);
+    h2._extBody=body;
+    h2.addEventListener('click', function(){ setOpen(h2, body.classList.contains('folded')); });
+    setOpen(h2, !!OPEN[key]);   // 기본 접힘 (이전에 펼쳤으면 유지)
+  }
+  if(changed) buildNav();
+}
+function allSecs(){
+  const tab=document.getElementById('tab-ext');
+  return tab? [...tab.querySelectorAll(':scope > h2.extSec')] : [];
+}
+function buildNav(){
+  const tab=document.getElementById('tab-ext'); if(!tab) return;
+  let nav=document.getElementById('extNav');
+  if(!nav){
+    nav=document.createElement('div'); nav.id='extNav';
+    tab.insertBefore(nav, tab.firstChild);
+  }
+  const secs=allSecs();
+  nav.innerHTML='';
+  const allBtn=document.createElement('button');
+  allBtn.className='navAll';
+  const anyOpen=()=>secs.some(h=>!h._extBody.classList.contains('folded'));
+  const refreshAllBtn=()=>{ allBtn.textContent = anyOpen()? '⊟ 모두 접기':'⊞ 모두 펼치기'; };
+  allBtn.onclick=function(){ const target=!anyOpen(); secs.forEach(h=>setOpen(h,target)); refreshAllBtn(); };
+  nav.appendChild(allBtn); refreshAllBtn();
+  for(const h2 of secs){
+    const b=document.createElement('button');
+    // 칩 라벨: 이모지+짧은 제목
+    let t=h2._extKey.replace(/\s*\(.*?\)\s*/g,'').trim();
+    if(t.length>9) t=t.slice(0,9)+'…';
+    b.textContent=t;
+    b.onclick=function(){
+      setOpen(h2,true); refreshAllBtn();
+      h2.scrollIntoView({behavior:'smooth', block:'start'});
+    };
+    nav.appendChild(b);
+  }
+  // 접기/펼치기 시 버튼 라벨 동기화
+  tab.addEventListener('click', function(ev){ if(ev.target.closest('h2.extSec')) refreshAllBtn(); });
+}
+// 확장팩들이 비동기로 섹션을 추가하므로 주기적으로 정리
+setInterval(function(){ try{ organize(); }catch(e){} }, 1000);
+document.addEventListener('click', function(ev){
+  if(ev.target.closest('[data-tab="ext"]')) setTimeout(function(){ try{ organize(); }catch(e){} }, 150);
+});
 })();
 </script>
 

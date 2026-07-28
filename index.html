@@ -14494,10 +14494,581 @@ document.addEventListener('click', function(ev){
 })();
 </script>
 
+<script>
+/* ================================================================
+   🧰 확장팩 4탄 — 각 탭 편의/콘텐츠 15종
+   강화: 축복권·일괄강화 | 장비: 잠금·일괄판매·비교 | 환생: 시뮬·유물조합
+   상점: 일일특가·정기예금 | 콘텐츠: 가위바위보·광산자동화
+   특성: 스킬숙련 | 설정: 통계·테마 | 소셜: 친구&선물
+   ================================================================ */
+(function(){
+'use strict';
+function E$(id){ return document.getElementById(id); }
+function todayStr(){ return new Date().toDateString(); }
+function x4(){
+  if(typeof S==='undefined'||!S) return null;
+  if(!S.x4) S.x4={};
+  const e=S.x4;
+  if(e.bless==null) e.bless=0;                        // 축복권 잔여
+  if(!e.deal) e.deal={date:'',bought:false};
+  if(!e.bank) e.bank={amount:0,since:0};
+  if(e.mineAuto==null) e.mineAuto=0;
+  if(!e.skillUse) e.skillUse={};
+  if(!e.theme) e.theme='purple';
+  if(!e.friends) e.friends=[];
+  if(!e.gift) e.gift={date:'',sent:false};
+  return e;
+}
+
+/* ═══ ① 강화 축복권 + ② 일괄 강화 (tab-up) ═══ */
+const _upStat = upStat;
+upStat = function(kind){
+  const ok = _upStat.apply(this, arguments);
+  try{
+    const e=x4();
+    if(ok && e && e.bless>0 && (kind==='atk'||kind==='def')){
+      e.bless--;
+      if(Math.random()<0.30){
+        if(kind==='atk') S.atkLv++; else S.defLv++;
+        log('<span class="gP">🍀 축복 발동! '+(kind==='atk'?'공격':'방어')+' 강화 1회 추가! (축복권 '+e.bless+'장 남음)</span>');
+        if(typeof renderStats==='function') renderStats();
+      }
+    }
+  }catch(err){}
+  return ok;
+};
+window.upStat = upStat;
+function buyBless(){
+  const e=x4(); if(!e) return;
+  const c=Math.floor(BAL.goldDrop(S.stage)*25);
+  if(S.gold<c){ log('<span class="r">골드 부족 ('+fmt(c)+'G)</span>'); return; }
+  S.gold-=c; e.bless+=10;
+  log('<span class="g">🍀 강화 축복권 10장 구매! (강화 성공 시 30% 확률로 1회 추가)</span>');
+  saveGame(true); renderX4up(); renderAll();
+}
+function bulkUp(kind){
+  const n=Math.max(1,Math.min(500,parseInt((E$('x4BulkN')||{}).value)||10));
+  let done=0;
+  for(let i=0;i<n;i++){ if(!upStat(kind)) break; done++; }
+  log(done>0? '<span class="c">⚡ 일괄 강화: '+(kind==='atk'?'공격':'방어')+' +'+done+'회 완료!</span>'
+            : '<span class="r">골드가 부족해 강화하지 못했습니다.</span>');
+  renderAll();
+}
+window.buyBless=buyBless; window.bulkUp=bulkUp;
+function renderX4up(){
+  if(!E$('x4UpBox')) return;
+  const e=x4();
+  E$('x4UpBox').innerHTML =
+    '<div class="row"><div class="info">🍀 강화 축복권 <b style="color:var(--gold)">'+e.bless+'장</b><small>강화 성공 시 30% 확률로 무료 1회 추가</small></div><button class="gold-btn" onclick="buyBless()">10장 구매</button></div>'
+   +'<div class="row"><div class="info">⚡ 일괄 강화<small>골드가 되는 만큼 연속 강화 (최대 500회)</small></div>'
+   +'<div style="display:flex;gap:4px;align-items:center;"><input id="x4BulkN" type="number" value="50" min="1" max="500" style="width:60px;background:var(--panel2);color:var(--txt);border:1px solid var(--line);padding:4px;">'
+   +'<button onclick="bulkUp(\'atk\')">공격</button><button onclick="bulkUp(\'def\')">방어</button></div></div>';
+}
+
+/* ═══ ③ 장비 잠금 + ④ 일괄 판매 + ⑤ 장비 비교 (tab-eq) ═══ */
+function togLock(id){
+  const it=(S.equips||[]).find(x=>x.id===id); if(!it) return;
+  it.lock=!it.lock;
+  log('<span class="c">'+(it.lock?'🔒':'🔓')+' ['+esc(it.name)+'] 잠금 '+(it.lock?'설정':'해제')+'</span>');
+  saveGame(true); renderX4eq();
+}
+function bulkSell(){
+  const gi=parseInt((E$('x4SellGrade')||{}).value)||0;
+  const targets=(S.equips||[]).filter(it=>!it.dev && !it.lock && it.id!==S.weapon && it.id!==S.armor && GRADES.indexOf(it.grade)<=gi);
+  if(!targets.length){ log('<span class="y">조건에 맞는 장비가 없습니다. (잠금·장착 제외)</span>'); return; }
+  let total=0;
+  for(const it of targets){ total+=Math.floor(it.base*2); }
+  S.equips=(S.equips||[]).filter(it=>!targets.includes(it));
+  S.gold+=total; recGold(total);
+  log('<span class="g">🧹 일괄 판매: '+targets.length+'개 → +'+fmt(total)+'G ('+GRADES[gi]+' 이하)</span>');
+  saveGame(true); renderX4eq(); renderAll();
+}
+window.togLock=togLock; window.bulkSell=bulkSell;
+function bestOf(type){
+  let best=null;
+  for(const it of (S.equips||[])){
+    if(it.type!==type||it.dev||it.id===S.weapon||it.id===S.armor) continue;
+    if(!best||eqPower(it)>eqPower(best)) best=it;
+  }
+  return best;
+}
+function renderX4eq(){
+  if(!E$('x4EqBox')) return;
+  const opts=GRADES.map((g,i)=>'<option value="'+i+'"'+(i===1?' selected':'')+'>'+g+' 이하</option>').join('');
+  const cmp=(type,label)=>{
+    const cur=(S.equips||[]).find(x=>x.id===(type==='weapon'?S.weapon:S.armor));
+    const best=bestOf(type);
+    if(!cur&&!best) return '';
+    const cp=cur?eqPower(cur):0, bp=best?eqPower(best):0;
+    const diff=bp-cp;
+    return '<div style="font-size:11px;margin:2px 0;">'+label+' 장착: <b>'+(cur?esc(cur.name)+' ('+fmt(cp)+')':'없음')+'</b>'
+      +(best?' · 인벤 최고: <span class="'+(GRADE_CLS[best.grade]||'')+'">'+esc(best.name)+'</span> ('+fmt(bp)+') '
+        +(isFinite(diff)?'<b style="color:'+(diff>0?'var(--green)':'var(--mut)')+'">'+(diff>0?'▲+'+fmt(diff)+' 교체 추천!':'현재가 최고')+'</b>':''):'')+'</div>';
+  };
+  const lockList=(S.equips||[]).filter(it=>!it.dev).slice(0,60).map(it=>
+    '<button style="font-size:10px;padding:2px 5px;margin:1px;'+(it.lock?'border-color:var(--gold);color:var(--gold);':'opacity:.75;')+'" onclick="togLock('+it.id+')">'+(it.lock?'🔒':'🔓')+' '+esc(String(it.name).slice(0,8))+'</button>').join('');
+  E$('x4EqBox').innerHTML =
+    '<div class="row"><div class="info">🧹 일괄 판매<small>선택 등급 이하 전부 판매 (🔒잠금·장착 장비 제외)</small></div>'
+   +'<div style="display:flex;gap:4px;"><select id="x4SellGrade" style="background:var(--panel2);color:var(--txt);border:1px solid var(--line);padding:4px;font-size:11px;">'+opts+'</select><button onclick="bulkSell()">판매!</button></div></div>'
+   +'<div style="border:1px dashed var(--line);padding:6px;margin:4px 0;">'+cmp('weapon','🗡️')+cmp('armor','🛡️')+'</div>'
+   +'<div style="font-size:11px;color:var(--mut);margin-bottom:2px;">🔒 장비 잠금 (일괄판매·가게 손님으로부터 보호):</div>'
+   +'<div style="max-height:110px;overflow-y:auto;">'+(lockList||'<span style="font-size:11px;color:var(--mut)">장비 없음</span>')+'</div>';
+}
+// 가게 운영 손님이 잠금 장비를 노리지 않도록 재정의 (x3 오버라이드)
+if(typeof openShopX==='function'){
+  const _osx=openShopX;
+  openShopX=function(){
+    // 잠금 장비를 임시 격리 후 원본 호출
+    const locked=(S.equips||[]).filter(it=>it.lock);
+    if(locked.length && (S.equips||[]).filter(it=>!it.dev&&!it.lock&&it.id!==S.weapon&&it.id!==S.armor).length===0){
+      log('<span class="r">팔 수 있는 장비가 없습니다. (전부 잠금/장착 중)</span>'); return;
+    }
+    // 원본이 잠금 아이템을 고르면 다시 굴리기 (최대 15회)
+    const before=S.x3&&S.x3.cust;
+    for(let i=0;i<15;i++){
+      _osx();
+      const c=S.x3&&S.x3.cust;
+      if(!c || c===before) return;
+      const it=(S.equips||[]).find(x=>x.id===c.itemId);
+      if(!it || !it.lock) return;
+      S.x3.cust=null; S.x3.shopCd=0;   // 잠긴 장비면 무르고 재시도
+    }
+  };
+  window.openShopX=openShopX;
+}
+
+/* ═══ ⑥ 환생 시뮬레이터 + ⑦ 유물 조합 보너스 (tab-art) ═══ */
+function artKinds(){ return Object.keys(S.artifacts||{}).filter(k=>(S.artifacts[k]||0)>0).length; }
+function artComboMul(kind){
+  const n=artKinds();
+  if(kind==='atk') return 1+(n>=3?0.03:0)+(n>=9?0.07:0);
+  if(kind==='gold') return 1+(n>=6?0.05:0);
+  return 1;
+}
+const _a4=playerATK,_g4=goldMult;
+playerATK=function(){ let v=_a4(); if(!isFinite(v)) return v; v*=artComboMul('atk'); return Math.round(v); };
+goldMult=function(){ return _g4()*artComboMul('gold'); };
+function renderX4art(){
+  if(!E$('x4ArtBox')) return;
+  const gain=rebirthGain();
+  const rows=[5,10,20].map(n=>{
+    const g2=Math.max(0,BAL.shardsFor(Math.min(200,S.stage+n))-S.shardsEarned);
+    return '<span class="chip">+'+n+'층 → 조각 <b>'+g2+'</b></span>';
+  }).join('');
+  const n=artKinds(), total=Object.keys(ARTS).length;
+  E$('x4ArtBox').innerHTML =
+    '<div style="border:1px solid var(--line);padding:8px;background:var(--panel2);margin-bottom:6px;">'
+   +'<div style="font-size:12px;">🔮 <b>환생 시뮬레이터</b> — 지금 환생하면: <b style="color:var(--gold)">균열의 조각 +'+gain+'</b></div>'
+   +'<div class="chips" style="margin-top:4px;">'+rows+'</div>'
+   +'<div style="font-size:10px;color:var(--mut);margin-top:3px;">조각은 현재 스테이지 기준. 더 깊이 간 뒤 환생할수록 이득!</div></div>'
+   +'<div class="row"><div class="info">🧿 유물 조합 보너스 <b style="color:var(--gold)">'+n+'/'+total+'종</b>'
+   +'<small>3종: 공격+3% · 6종: 골드+5% · 9종: 공격+7% 추가 '
+   +(n>=3?'<span style="color:var(--green)">[3종✓]</span>':'')+(n>=6?'<span style="color:var(--green)">[6종✓]</span>':'')+(n>=9?'<span style="color:var(--green)">[9종✓]</span>':'')
+   +'</small></div></div>';
+}
+
+/* ═══ ⑧ 일일 특가 + ⑨ 골드 정기예금 (tab-shop) ═══ */
+const DEALS=[
+  {n:'⛏️ 강화석 25개', give:()=>{S.stones=(S.stones||0)+25;}, k:12},
+  {n:'💎 균열의 조각 10개', give:()=>{S.shards=(S.shards||0)+10;}, k:18},
+  {n:'🧪 공격 물약 60분', give:()=>{S.potionUntil=Math.max(S.potionUntil||0,Date.now())+60*60000;}, k:10},
+  {n:'💠 랜덤 룬 3개', give:()=>{ if(S.x2&&S.x2.runes){ for(let i=0;i<3;i++){ const t=['atk','def','crit','gold','hp'][Math.floor(Math.random()*5)]; S.x2.runes[t]=(S.x2.runes[t]||0)+1; } } }, k:15},
+];
+function todaysDeal(){ let h=0; const s=todayStr(); for(let i=0;i<s.length;i++) h=(h*31+s.charCodeAt(i))>>>0; return DEALS[h%DEALS.length]; }
+function buyDeal(){
+  const e=x4(); if(!e) return;
+  if(e.deal.date===todayStr()&&e.deal.bought){ log('<span class="y">오늘의 특가는 이미 구매했습니다.</span>'); return; }
+  const d=todaysDeal(); const price=Math.floor(BAL.goldDrop(S.stage)*d.k*0.5);
+  if(S.gold<price){ log('<span class="r">골드 부족 ('+fmt(price)+'G)</span>'); return; }
+  S.gold-=price; d.give();
+  e.deal={date:todayStr(),bought:true};
+  log('<span class="g">🏷️ 일일 특가 구매! ['+d.n+'] (50% 할인)</span>');
+  saveGame(true); renderX4shop(); renderAll();
+}
+function bankAccrued(){
+  const e=x4(); if(!e||!e.bank.amount) return 0;
+  const hrs=Math.min(48,(Date.now()-e.bank.since)/3600000);
+  return Math.floor(e.bank.amount*0.01*hrs);
+}
+function bankDeposit(){
+  const e=x4(); if(!e) return;
+  const v=Math.max(0,Math.floor(parseInt((E$('x4BankIn')||{}).value)||0));
+  if(v<=0||S.gold<v){ log('<span class="r">예금액이 올바르지 않거나 골드가 부족합니다.</span>'); return; }
+  const acc=bankAccrued();
+  e.bank.amount+=v+acc; e.bank.since=Date.now(); S.gold-=v;
+  log('<span class="g">🏦 '+fmt(v)+'G 예금!'+(acc?' (기존 이자 '+fmt(acc)+'G 원금 편입)':'')+' 시간당 1% 이자 (최대 48시간)</span>');
+  saveGame(true); renderX4shop(); renderAll();
+}
+function bankWithdraw(){
+  const e=x4(); if(!e||!e.bank.amount){ log('<span class="y">예금이 없습니다.</span>'); return; }
+  const acc=bankAccrued(); const total=e.bank.amount+acc;
+  S.gold+=total; recGold(acc);
+  log('<span class="g">🏦 전액 인출! 원금 '+fmt(e.bank.amount)+'G + 이자 '+fmt(acc)+'G = <b>'+fmt(total)+'G</b></span>');
+  e.bank={amount:0,since:0};
+  saveGame(true); renderX4shop(); renderAll();
+}
+window.buyDeal=buyDeal; window.bankDeposit=bankDeposit; window.bankWithdraw=bankWithdraw;
+function renderX4shop(){
+  if(!E$('x4ShopBox')) return;
+  const e=x4(); const d=todaysDeal();
+  const price=Math.floor(BAL.goldDrop(S.stage)*d.k*0.5), orig=price*2;
+  const bought=e.deal.date===todayStr()&&e.deal.bought;
+  E$('x4ShopBox').innerHTML =
+    '<div class="row"><div class="info">🏷️ 오늘의 특가: <b>'+d.n+'</b><small><s style="color:var(--mut)">'+fmt(orig)+'G</s> → <b style="color:var(--gold)">'+fmt(price)+'G</b> (50%↓ · 하루 1회)</small></div>'
+   +'<button class="gold-btn" '+(bought?'disabled':'')+' onclick="buyDeal()">'+(bought?'구매완료':'구매!')+'</button></div>'
+   +'<div class="row"><div class="info">🏦 골드 정기예금 <b style="color:var(--gold)">'+fmt(e.bank.amount)+'G</b>'+(e.bank.amount?' <small>+이자 '+fmt(bankAccrued())+'G 누적 중 (시간당 1%, 최대 48h)</small>':'<small>맡기면 시간당 1% 이자!</small>')+'</div>'
+   +'<div style="display:flex;gap:4px;align-items:center;"><input id="x4BankIn" type="number" placeholder="금액" style="width:80px;background:var(--panel2);color:var(--txt);border:1px solid var(--line);padding:4px;">'
+   +'<button onclick="bankDeposit()">예금</button><button class="gold-btn" onclick="bankWithdraw()">인출</button></div></div>';
+}
+
+/* ═══ ⑩ 가위바위보 + ⑪ 광산 자동화 (tab-content) ═══ */
+let rpsState=null;
+function rpsStart(mult){
+  const bet=Math.floor(BAL.goldDrop(S.stage)*mult);
+  if(S.gold<bet){ log('<span class="r">골드 부족 ('+fmt(bet)+'G)</span>'); return; }
+  S.gold-=bet;
+  rpsState={bet, me:0, npc:0};
+  log('<span class="c">✊✋✌️ ['+fmt(bet)+'G] 삼세판 시작! 이기면 1.8배!</span>');
+  renderX4content();
+}
+function rpsPick(i){
+  if(!rpsState) return;
+  const HANDS=['✊','✋','✌️'];
+  const npc=Math.floor(Math.random()*3);
+  const r=(i-npc+3)%3;   // 0무 1승 2패
+  if(r===1){ rpsState.me++; log('<span class="g">'+HANDS[i]+' vs '+HANDS[npc]+' — 승리! ('+rpsState.me+':'+rpsState.npc+')</span>'); }
+  else if(r===2){ rpsState.npc++; log('<span class="r">'+HANDS[i]+' vs '+HANDS[npc]+' — 패배... ('+rpsState.me+':'+rpsState.npc+')</span>'); }
+  else log('<span class="c">'+HANDS[i]+' vs '+HANDS[npc]+' — 무승부!</span>');
+  if(rpsState.me>=2){
+    const win=Math.floor(rpsState.bet*1.8);
+    S.gold+=win; recGold(win);
+    log('<span class="gP">🏆 가위바위보 승리! +'+fmt(win)+'G</span>');
+    rpsState=null;
+  } else if(rpsState.npc>=2){
+    log('<span class="r">💸 졌습니다... 베팅금을 잃었습니다.</span>');
+    rpsState=null;
+  }
+  saveGame(true); renderX4content(); renderAll();
+}
+function upMineAuto(){
+  const e=x4(); if(!e) return;
+  if(e.mineAuto>=10){ log('<span class="y">이미 최대 레벨(10)입니다.</span>'); return; }
+  const c=Math.floor(BAL.goldDrop(S.stage)*50*Math.pow(2,e.mineAuto));
+  if(S.gold<c){ log('<span class="r">골드 부족 ('+fmt(c)+'G)</span>'); return; }
+  S.gold-=c; e.mineAuto++;
+  log('<span class="g">⚙️ 광산 자동화 Lv.'+e.mineAuto+'! (1분마다 자동 채굴 골드)</span>');
+  saveGame(true); renderX4content(); renderAll();
+}
+window.rpsStart=rpsStart; window.rpsPick=rpsPick; window.upMineAuto=upMineAuto;
+let _minePay=0;
+setInterval(function(){ try{
+  const e=x4(); if(!e||!e.mineAuto) return;
+  const g=Math.floor(BAL.goldDrop(S.stage)*0.8*e.mineAuto*goldMult());
+  S.gold+=g; recGold(g);
+  if(++_minePay%5===0) log('<span class="mut">⚙️ 자동 채굴 누적 지급 중... (Lv.'+e.mineAuto+', 방금 +'+fmt(g)+'G)</span>');
+}catch(err){} }, 60000);
+function renderX4content(){
+  if(!E$('x4ContBox')) return;
+  const e=x4();
+  let rps;
+  if(rpsState){
+    rps='<div style="border:1px solid var(--gold);padding:8px;background:var(--panel2);"><b>✊✋✌️ '+rpsState.me+' : '+rpsState.npc+'</b> (2선승 · 판돈 '+fmt(rpsState.bet)+'G)'
+       +'<div style="display:flex;gap:4px;margin-top:5px;"><button onclick="rpsPick(0)" style="font-size:16px;">✊</button><button onclick="rpsPick(1)" style="font-size:16px;">✋</button><button onclick="rpsPick(2)" style="font-size:16px;">✌️</button></div></div>';
+  } else {
+    rps='<div class="row"><div class="info">✊✋✌️ 가위바위보 도박장<small>NPC와 삼세판 · 승리 시 1.8배</small></div>'
+       +'<div style="display:flex;gap:4px;"><button onclick="rpsStart(5)">소액</button><button onclick="rpsStart(20)">중액</button><button class="gold-btn" onclick="rpsStart(80)">고액</button></div></div>';
+  }
+  const c=Math.floor(BAL.goldDrop(S.stage)*50*Math.pow(2,e.mineAuto));
+  rps+='<div class="row"><div class="info">⚙️ 광산 자동화 <b style="color:var(--gold)">Lv.'+e.mineAuto+'/10</b><small>1분마다 자동 골드 채굴 (레벨당 증가)</small></div>'
+      +'<button class="gold-btn" '+(e.mineAuto>=10?'disabled':'')+' onclick="upMineAuto()">'+(e.mineAuto>=10?'MAX':'강화 '+fmt(c)+'G')+'</button></div>';
+  E$('x4ContBox').innerHTML=rps;
+}
+
+/* ═══ ⑫ 스킬 숙련도 (tab-talent) ═══ */
+const _useSkill = useSkill;
+useSkill = function(id){
+  try{
+    const e=x4();
+    if(e && Date.now() >= ((S.skillCd&&S.skillCd[id])||0)){
+      e.skillUse[id]=(e.skillUse[id]||0)+1;
+      const lv=Math.min(10,Math.floor(e.skillUse[id]/20));
+      if(lv>0 && e.skillUse[id]%20===0) log('<span class="c">📈 스킬 숙련! ['+(SKILL_DEFS[id]?SKILL_DEFS[id].name:id)+'] 숙련 Lv.'+lv+'</span>');
+    }
+  }catch(err){}
+  return _useSkill.apply(this, arguments);
+};
+window.useSkill = useSkill;
+function totalMastery(){
+  const e=x4(); if(!e) return 0;
+  let t=0; for(const k in e.skillUse) t+=Math.min(10,Math.floor(e.skillUse[k]/20));
+  return t;
+}
+const _skDmg = skillDamage;
+skillDamage = function(mult, label, forceCrit){
+  return _skDmg.call(this, mult*(1+0.01*totalMastery()), label, forceCrit);
+};
+window.skillDamage = skillDamage;
+function renderX4talent(){
+  if(!E$('x4TalBox')) return;
+  const e=x4();
+  const skills=(typeof currentSkills==='function')?currentSkills():[];
+  E$('x4TalBox').innerHTML =
+    '<div style="font-size:11px;color:var(--cyan);margin-bottom:4px;">총 숙련 Lv <b style="color:var(--gold)">'+totalMastery()+'</b> → 모든 스킬 피해 +'+totalMastery()+'%</div>'
+   +(skills.length? skills.map(s=>{
+      const use=e.skillUse[s.id]||0, lv=Math.min(10,Math.floor(use/20));
+      return '<div class="row"><div class="info">'+s.icon+' '+s.name+' <b style="color:var(--gold)">숙련 Lv.'+lv+'/10</b><small>사용 '+use+'회 · 20회마다 레벨업 (레벨당 스킬 피해 +1%)</small></div>'
+        +'<div class="bar" style="width:80px;"><div style="width:'+Math.min(100,(use%20)*5)+'%;background:var(--rift);height:100%"></div></div></div>';
+    }).join(''):'<div class="notice">직업 스킬이 없습니다.</div>');
+}
+
+/* ═══ ⑬ 통계 대시보드 + ⑭ 포인트 컬러 테마 (tab-set) ═══ */
+const sess={start:Date.now(), gold:0, kills0:null};
+const _rec = recGold;
+recGold = function(g){ try{ sess.gold+=Math.max(0,g||0); }catch(err){} return _rec.apply(this,arguments); };
+window.recGold = recGold;
+const THEME_COLORS={purple:['#a06bff','보라(기본)'], blue:['#4a8cff','파랑'], red:['#ff5470','빨강'], green:['#54d86b','초록']};
+function setThemeX(t){
+  const e=x4(); if(!e||!THEME_COLORS[t]) return;
+  e.theme=t;
+  document.documentElement.style.setProperty('--rift', THEME_COLORS[t][0]);
+  log('<span class="c">🎨 포인트 컬러: '+THEME_COLORS[t][1]+'</span>');
+  saveGame(true); renderX4set();
+}
+window.setThemeX=setThemeX;
+function renderX4set(){
+  if(!E$('x4SetBox')) return;
+  const e=x4();
+  if(sess.kills0==null) sess.kills0=S.totalKills||0;
+  const mins=Math.max(1,(Date.now()-sess.start)/60000);
+  const kills=Math.max(0,(S.totalKills||0)-sess.kills0);
+  const mm=Math.floor(mins), ss=Math.floor(((Date.now()-sess.start)/1000)%60);
+  E$('x4SetBox').innerHTML =
+    '<div class="chips">'
+   +'<span class="chip">⏱️ 세션 <b>'+mm+'분 '+ss+'초</b></span>'
+   +'<span class="chip">💰 세션 골드 <b>'+fmt(Math.floor(sess.gold))+'</b></span>'
+   +'<span class="chip">📈 분당 골드 <b>'+fmt(Math.floor(sess.gold/mins))+'</b></span>'
+   +'<span class="chip">⚔️ 세션 처치 <b>'+fmt(kills)+'</b></span>'
+   +'<span class="chip">🔪 분당 처치 <b>'+(kills/mins).toFixed(1)+'</b></span>'
+   +'</div>'
+   +'<div class="row" style="margin-top:4px;"><div class="info">🎨 포인트 컬러 테마<small>UI 강조색 변경 (저장됨)</small></div>'
+   +'<div style="display:flex;gap:3px;">'+Object.entries(THEME_COLORS).map(pr=>
+     '<button style="font-size:10px;padding:3px 6px;border-color:'+pr[1][0]+';color:'+pr[1][0]+';'+(e.theme===pr[0]?'background:var(--panel2);':'')+'" onclick="setThemeX(\''+pr[0]+'\')">'+pr[1][1]+'</button>').join('')+'</div></div>';
+}
+
+/* ═══ ⑮ 친구 목록 & 선물 (tab-social) ═══ */
+function addFriend(){
+  const e=x4(); if(!e) return;
+  const v=((E$('x4FriendIn')||{}).value||'').trim().slice(0,20);
+  if(!v){ log('<span class="r">친구 닉네임을 입력하세요.</span>'); return; }
+  if(e.friends.includes(v)){ log('<span class="y">이미 등록된 친구입니다.</span>'); return; }
+  if(e.friends.length>=10){ log('<span class="r">친구는 최대 10명입니다.</span>'); return; }
+  e.friends.push(v);
+  log('<span class="g">👥 ['+esc(v)+'] 친구 등록!</span>');
+  saveGame(true); renderX4social();
+}
+function delFriend(n){
+  const e=x4(); if(!e) return;
+  e.friends=e.friends.filter(f=>f!==n);
+  saveGame(true); renderX4social();
+}
+async function sendGift(n){
+  const e=x4(); if(!e) return;
+  if(e.gift.date===todayStr()&&e.gift.sent){ log('<span class="y">선물은 하루 1회만 보낼 수 있습니다.</span>'); return; }
+  const amt=Math.floor(BAL.goldDrop(S.stage)*10);
+  if(S.gold<amt){ log('<span class="r">골드 부족 ('+fmt(amt)+'G)</span>'); return; }
+  try{
+    if(typeof NET==='undefined'||!NET.isOnline()){ log('<span class="r">온라인 연결이 필요합니다.</span>'); return; }
+    S.gold-=amt;
+    const r=await NET.req('/mail/send',{to:n, nick:S.nickname||'만물상', subject:'🎁 친구 선물', body:'친구가 보낸 선물입니다!', gold:amt});
+    if(r&&r.ok){
+      e.gift={date:todayStr(),sent:true};
+      log('<span class="g">🎁 ['+esc(n)+']에게 '+fmt(amt)+'G 선물 발송! (우편함으로 전달)</span>');
+    } else { S.gold+=amt; log('<span class="r">선물 전송 실패...</span>'); }
+  }catch(err){ S.gold+=amt; log('<span class="r">선물 전송 실패 (네트워크)</span>'); }
+  saveGame(true); renderX4social(); renderAll();
+}
+window.addFriend=addFriend; window.delFriend=delFriend; window.sendGift=sendGift;
+function renderX4social(){
+  if(!E$('x4SocBox')) return;
+  const e=x4();
+  const sent=e.gift.date===todayStr()&&e.gift.sent;
+  E$('x4SocBox').innerHTML =
+    '<div class="row"><div class="info">👥 친구 등록 ('+e.friends.length+'/10)<small>닉네임 입력 · 하루 1명에게 골드 선물 (서버 우편)</small></div>'
+   +'<div style="display:flex;gap:4px;"><input id="x4FriendIn" placeholder="닉네임" style="width:90px;background:var(--panel2);color:var(--txt);border:1px solid var(--line);padding:4px;font-size:11px;"><button onclick="addFriend()">등록</button></div></div>'
+   +e.friends.map(n=>'<div class="row"><div class="info">👤 '+esc(n)+'</div><div style="display:flex;gap:3px;">'
+     +'<button class="gold-btn" style="font-size:10px;" '+(sent?'disabled':'')+' onclick="sendGift(\''+n.replace(/'/g,"\\'")+'\')">'+(sent?'오늘 완료':'🎁 선물')+'</button>'
+     +'<button style="font-size:10px;" onclick="delFriend(\''+n.replace(/'/g,"\\'")+'\')">삭제</button></div></div>').join('');
+}
+
+/* ═══ UI 주입 + 렌더 루프 ═══ */
+function inj(tabId, boxId, title){
+  const tab=E$(tabId);
+  if(!tab||E$(boxId)) return;
+  tab.insertAdjacentHTML('beforeend','<h2 style="margin-top:12px;">'+title+'</h2><div id="'+boxId+'"></div>');
+}
+function injectX4(){
+  inj('tab-up','x4UpBox','🍀 강화 편의');
+  inj('tab-eq','x4EqBox','🧰 인벤토리 도구');
+  inj('tab-art','x4ArtBox','🔮 환생 도우미');
+  inj('tab-shop','x4ShopBox','🏷️ 특가 & 은행');
+  inj('tab-content','x4ContBox','🎮 오락실 & 자동화');
+  inj('tab-talent','x4TalBox','📈 스킬 숙련도');
+  inj('tab-set','x4SetBox','📊 통계 & 테마');
+  inj('tab-social','x4SocBox','👥 친구 & 선물');
+}
+function renderX4(){
+  if(!x4()) return;
+  injectX4();
+  renderX4up(); renderX4eq(); renderX4art(); renderX4shop();
+  renderX4content(); renderX4talent(); renderX4set(); renderX4social();
+}
+setInterval(function(){ try{ renderX4(); }catch(e){} }, 2500);
+document.addEventListener('click', function(ev){
+  if(ev.target.closest('.tabs button')) setTimeout(function(){ try{ renderX4(); }catch(e){} }, 80);
+});
+const boot4=setInterval(function(){
+  try{
+    if(typeof S!=='undefined'&&S){
+      clearInterval(boot4);
+      const e=x4(); injectX4();
+      // 저장된 테마 적용
+      if(e&&THEME_COLORS[e.theme]) document.documentElement.style.setProperty('--rift', THEME_COLORS[e.theme][0]);
+      log('<span class="p">🧰 확장팩 4탄 로드! 각 탭에 편의 기능 15종 추가!</span>');
+    }
+  }catch(e){}
+}, 800);
+})();
+</script>
+
+<script>
+/* ================================================================
+   ♻️ 확장팩 5탄 — 환생 대개편 + 보스 오토
+   ① 환생 시 직업·펫만 남기고 완전 초기화 (스탯·포인트·치명강화·탑 포함)
+   ② 환생 가속: 환생 1회당 공격력·경험치 +10% (최대 +300%) → 재진행 초고속
+   ③ 환생 혜택: 시작 골드 지급 + 특전 포인트(기존 트리) + 가속
+   ④ 보스 오토(구매형·환생 영구 유지): 10킬 모이면 자동 보스전 → 자동 스테이지 진행
+   ⑤ 오토/편의류(전투력 무관)는 전부 환생에도 유지 보장
+   ================================================================ */
+(function(){
+'use strict';
+function E$(id){ return document.getElementById(id); }
+function x5(){
+  if(typeof S==='undefined'||!S) return null;
+  if(!S.x5) S.x5={};
+  if(S.x5.autoBossOwned==null) S.x5.autoBossOwned=false;
+  if(S.x5.autoBossOn==null) S.x5.autoBossOn=true;
+  return S.x5;
+}
+function rbMul(){ return 1 + 0.10*Math.min(30,(S&&S.rebirths)||0); }   // 환생 가속 배율
+
+/* ---------- ② 환생 가속: 공격력 & 경험치 ---------- */
+const _a5=playerATK;
+playerATK=function(){ const v=_a5(); if(!isFinite(v)) return v; return Math.round(v*rbMul()); };
+const _ge5=gainExp;
+gainExp=function(x){ return _ge5.call(this, x*rbMul()); };
+window.gainExp=gainExp;
+
+/* ---------- ① + ③ 환생 대개편 ---------- */
+const _doRb=doRebirth;
+doRebirth=function(){
+  const rb0=(S&&S.rebirths)||0;
+  _doRb.apply(this, arguments);
+  try{
+    if(!S || S.rebirths<=rb0) return;   // 조각 0 등으로 환생이 실행되지 않은 경우
+    // ① 추가 초기화 — 직업·펫·유물·조각·특전·오토류는 유지, 나머지 전투력 요소 완전 리셋
+    S.stats={str:10, dex:10, vit:10};
+    S.statPoints=0;
+    S.critLv=0;
+    S.tower=1;
+    S.skillCd={};
+    S.feverGauge=0; S.feverUntil=0;
+    if(S.x2&&S.x2.sockets){ // 룬은 소켓에서 해제되어 보유 룬으로 반환 (룬 자체는 유지)
+      for(const slot of ['weapon','armor']){
+        for(const t of (S.x2.sockets[slot]||[])) S.x2.runes[t]=(S.x2.runes[t]||0)+1;
+        S.x2.sockets[slot]=[];
+      }
+    }
+    // ③ 환생 혜택: 시작 골드 + 가속 안내
+    const startGold=Math.floor(2000*S.rebirths*Math.pow(1.3,Math.min(20,S.rebirths)));
+    S.gold+=startGold; recGold(startGold);
+    pHpCur=playerMaxHP();
+    log('<span class="gP">♻️ [환생 '+S.rebirths+'회] 완전 초기화 완료! (직업·펫·유물·특전·오토 설정은 유지)</span>');
+    log('<span class="g">🎁 환생 혜택: 시작 골드 +'+fmt(startGold)+'G · 공격력/경험치 +'+Math.round((rbMul()-1)*100)+'% 영구 가속 · 특전 포인트 +1</span>');
+    renderAll(); saveGame(true);
+  }catch(err){}
+};
+window.doRebirth=doRebirth;
+
+/* ---------- ④ 보스 오토 (구매형 · 영구) ---------- */
+function buyAutoBoss(){
+  const e=x5(); if(!e) return;
+  if(e.autoBossOwned){ log('<span class="y">이미 보유 중입니다.</span>'); return; }
+  if((S.shards||0)<40){ log('<span class="r">균열의 조각 40개가 필요합니다.</span>'); return; }
+  S.shards-=40; e.autoBossOwned=true; e.autoBossOn=true;
+  log('<span class="gP">🤖 [보스 오토] 구매 완료! 10킬이 모이면 자동으로 보스전 개시 → 스테이지 자동 진행 (환생해도 영구 유지)</span>');
+  saveGame(true); renderX5(); renderAll();
+}
+function togAutoBoss(){
+  const e=x5(); if(!e||!e.autoBossOwned) return;
+  e.autoBossOn=!e.autoBossOn;
+  log('<span class="c">🤖 보스 오토: '+(e.autoBossOn?'ON':'OFF')+'</span>');
+  saveGame(true); renderX5();
+}
+window.buyAutoBoss=buyAutoBoss; window.togAutoBoss=togAutoBoss;
+setInterval(function(){ try{
+  const e=x5(); if(!e||!e.autoBossOwned||!e.autoBossOn) return;
+  if(typeof battleMode!=='undefined' && battleMode!=='field') return;
+  if(typeof mob!=='undefined' && mob && mob.isBoss) return;
+  if((S.kills||0) >= BAL.killsForBoss && typeof tryBoss==='function'){
+    tryBoss();
+  }
+}catch(err){} }, 1500);
+
+/* ---------- UI (설정 탭 + 환생 탭 안내) ---------- */
+function injectX5(){
+  const set=E$('tab-set');
+  if(set && !E$('x5Box')){
+    set.insertAdjacentHTML('beforeend','<h2 style="margin-top:12px;">🤖 전투 자동화+ <span style="color:var(--mut);font-size:12px;">(환생 영구 유지)</span></h2><div id="x5Box"></div>');
+  }
+  const art=E$('tab-art');
+  if(art && !E$('x5RbInfo')){
+    art.insertAdjacentHTML('beforeend',
+      '<div id="x5RbInfo" class="notice" style="margin-top:8px;">♻️ <b>환생 규칙</b>: 환생 시 <b style="color:var(--gold)">직업·펫·유물·조각·특전·오토/편의 설정</b>만 유지되고 나머지(레벨·골드·장비·스탯·강화·탑)는 전부 초기화됩니다.<br>'
+      +'🎁 <b>환생 혜택</b>: 환생 1회당 <b style="color:var(--green)">공격력·경험치 +10% 영구 가속</b>(최대 +300%) + 시작 골드 지급 + 특전 포인트 1 → 하면 할수록 재진행이 빨라집니다!</div>');
+  }
+}
+function renderX5(){
+  if(!x5()) return;
+  injectX5();
+  if(!E$('x5Box')) return;
+  const e=S.x5;
+  E$('x5Box').innerHTML =
+    '<div class="row"><div class="info">🤖 보스 오토 '+(e.autoBossOwned?'<b style="color:var(--green)">보유 중</b>':'<b style="color:var(--gold)">미보유</b>')
+   +'<small>10킬 도달 시 자동 보스전 → 처치 시 스테이지 자동 진행 · <b>환생해도 영구 유지</b></small></div>'
+   +(e.autoBossOwned
+     ? '<button onclick="togAutoBoss()" style="'+(e.autoBossOn?'border-color:var(--green);color:var(--green)':'')+'">'+(e.autoBossOn?'ON':'OFF')+'</button>'
+     : '<button class="gold-btn" onclick="buyAutoBoss()">구매 (조각 40)</button>')+'</div>'
+   +'<div style="font-size:10px;color:var(--mut);margin-top:2px;">현재 환생 가속: 공격력·경험치 <b style="color:var(--green)">+'+Math.round((rbMul()-1)*100)+'%</b> (환생 '+(S.rebirths||0)+'회) · 자동전투/자동판매/스킬오토/물약오토/배속/보스오토는 환생 시 초기화되지 않습니다.</div>';
+}
+setInterval(function(){ try{ renderX5(); }catch(e){} }, 2500);
+document.addEventListener('click', function(ev){
+  if(ev.target.closest('.tabs button')) setTimeout(function(){ try{ renderX5(); }catch(e){} }, 90);
+});
+const boot5=setInterval(function(){
+  try{
+    if(typeof S!=='undefined'&&S){
+      clearInterval(boot5);
+      x5(); injectX5();
+      log('<span class="p">♻️ 확장팩 5탄 로드! 환생 대개편(가속·혜택·완전초기화) + 보스 오토 추가!</span>');
+    }
+  }catch(e){}
+}, 900);
+})();
+</script>
+
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79"}' crossorigin="anonymous"></script>
 </body>
 </html>
 
 <!-- Auto-save on page leave -->
-

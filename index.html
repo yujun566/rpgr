@@ -4638,7 +4638,7 @@ let currentDifficulty = 'normal';
 //   151~175 ✨ 신의 차원  (Divine)
 //   176~200 👑 DEV 차원   (Developer)
 // ============================================================================
-const MAX_STAGE = 1700;
+const MAX_STAGE = 2000;   // +300 스테이지 확장
 
 const TIERS = [
   {id:'normal', name:'일반',  icon:'',   start:1,   end:100, hpMul:1,      atkMul:1,     goldMul:1,    color:'#43e6cf', pfx:''},
@@ -4706,6 +4706,18 @@ const TIERS = [
   {id:'t58', name:'무극', icon:'⭕', start:1626, end:1650, hpMul:3.916e+154, atkMul:2.008e+128, goldMul:1.208e+124, color:'#a86bff', pfx:'무극의'},
   {id:'t59', name:'태극', icon:'☯️', start:1651, end:1675, hpMul:2.037e+157, atkMul:3.967e+130, goldMul:1.946e+126, color:'#e06be0', pfx:'태극의'},
   {id:'t60', name:'만물', icon:'🌈', start:1676, end:1700, hpMul:1.071e+160, atkMul:7.923e+132, goldMul:3.167e+128, color:'#ffffff', pfx:'만물의'},
+  {id:'t61', name:'천지개벽', icon:'🌋', start:1701, end:1725, hpMul:5.569e+161, atkMul:1.569e+134, goldMul:5.099e+129, color:'#ff2d95', pfx:'천지개벽의'},
+  {id:'t62', name:'삼라만상', icon:'🪐', start:1726, end:1750, hpMul:2.896e+163, atkMul:3.106e+135, goldMul:8.209e+130, color:'#ff5470', pfx:'삼라만상의'},
+  {id:'t63', name:'오리진', icon:'🧿', start:1751, end:1775, hpMul:1.506e+165, atkMul:6.150e+136, goldMul:1.322e+132, color:'#ff8a3a', pfx:'오리진의'},
+  {id:'t64', name:'제로', icon:'0️⃣', start:1776, end:1800, hpMul:7.831e+166, atkMul:1.218e+138, goldMul:2.128e+133, color:'#ffd23f', pfx:'제로의'},
+  {id:'t65', name:'특이점', icon:'🕋', start:1801, end:1825, hpMul:4.072e+168, atkMul:2.411e+139, goldMul:3.426e+134, color:'#a8e86a', pfx:'특이점의'},
+  {id:'t66', name:'빅뱅', icon:'💥', start:1826, end:1850, hpMul:2.117e+170, atkMul:4.774e+140, goldMul:5.516e+135, color:'#43e6cf', pfx:'빅뱅의'},
+  {id:'t67', name:'멀티버스', icon:'🌐', start:1851, end:1875, hpMul:1.101e+172, atkMul:9.452e+141, goldMul:8.881e+136, color:'#43a0e6', pfx:'멀티버스의'},
+  {id:'t68', name:'옴니버스', icon:'🌀', start:1876, end:1900, hpMul:5.726e+173, atkMul:1.871e+143, goldMul:1.430e+138, color:'#a86bff', pfx:'옴니버스의'},
+  {id:'t69', name:'아카식 레코드', icon:'📜', start:1901, end:1925, hpMul:2.977e+175, atkMul:3.705e+144, goldMul:2.302e+139, color:'#e06be0', pfx:'아카식'},
+  {id:'t70', name:'데미우르고스', icon:'🗝️', start:1926, end:1950, hpMul:1.548e+177, atkMul:7.336e+145, goldMul:3.706e+140, color:'#ffd23f', pfx:'데미우르고스의'},
+  {id:'t71', name:'알파 오메가', icon:'♾️', start:1951, end:1975, hpMul:8.051e+178, atkMul:1.452e+147, goldMul:5.967e+141, color:'#ff2d95', pfx:'알파 오메가의'},
+  {id:'t72', name:'균열의 끝', icon:'👁️', start:1976, end:2000, hpMul:4.187e+180, atkMul:2.876e+148, goldMul:9.607e+142, color:'#ffffff', pfx:'종언을 고하는'},
 ];
 
 function tierOf(stage){
@@ -5547,7 +5559,101 @@ let memSave = null;
 /* ---------- 고유이름 / 관리자 계정 ---------- */
 const ADMIN_NICK = '개발자';
 const ADMIN_PASSWORD = [
-  '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'
+  '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',
+  'AQBqzGWtTu9XHyKeUSxwBWrWwMUTm84m0BHOfl56CzvFuUc1',
+  'WtiOX3NxKCNJ5gRddwwZoNTNFQGV5vMSUVSpnr2S6waQxWfj',
+  'DActqcJZPs9nmiNEARD1FmNEutoyOKzgz9mgYEs4pLIBgpZH',
+  'ZaHnqhnLZPVMXr4YS4gJv5lyCbPf3OLUQKkiRZaINT517DLQ',
+  '7l99QJN5iykcE5QxUe2F2i0buTczc56MlKHDRapWyT25w1Z1',
+  'ZcUrLa5XxdjQHoi5EtA26Kl0dTNFM6seeFTQACmAhTp381AO',
+  'EEUhjDFa9XHnQg3wKjxnyF2Jc9joSOOp8laUCSKrqe5gjuEm',
+  'PP0frKMJXF3Eq39nxrqaaAnCZXQwyXQOFK6sUV1E8SFzqjeM',
+  '0ED5WyKSrtgGUaTzdlzhAsnXoEBx9DdbxWuNS4mCgVM9Kydo',
+  'hoN6J8lAGWV7Rn0E555gub5CO5vTvbnYlHybjZN1IToBRvu9',
+  'lzP93nmGO8OVRCLUl6GA5PbUkS9mKxGl0GwtjcfRC0q1bEog',
+  'UsRgguaIj0v5apIT8gOituyNBmocaM0LZm8rtMBzD0E7L5T6',
+  'fPtoYTo8UMUtStJJCBCfbhfHOBeJrUcbEZZJ82n8E0z7XPzv',
+  '6eTxIXjBfwxJCTl1PFnd0bxhFsA9Vk21ZRPtKJkleCxl6lmk',
+  'E8gddNtLuOQTRh0kFl1loqe2pQJDG5d0SWrBvG5MeUv5SFMQ',
+  'OTgKLUZPCwV1jeVR8XDtHo9qpoMdDCWt1axmhtRa5GuCQYoX',
+  'wi1D7Z6czHlPZGSZDRAm48BmRvjeY0Ccx1Jo1yAkXusU9emX',
+  'GyD3wvKtPVKMeZM2d8IxRMEg0YbWLrjEeXUik8UG9LHNkswb',
+  'zQnWARdVmk3SEHer6X5h7N1AQLs4Mp821nJLy6HJk36A045p',
+  'zKT2NaJeNDP5lRuV2WPc0sjv6GFKkPe1BU9dUlyzMDQDEpgj',
+  'cbAzJM4U4QjWSIkYpGk7IKSW9nVK4R1sGleyBcclzcmYC6fg',
+  'z7XdSHX48KHZAot0Fhrv3oahCgX0VNMQjYyRtlPM3EEc455C',
+  'BFL7KjmCVbPlHpU4TeCcPhAvIDrrqbjnWL5G3iiSc0QLsFOh',
+  'iKGFNI4nXxxfBriUBXiuPvVjCDbQyrwSGFVoah1qQ9SYqvNU',
+  'CHz9x4XWc6OGgcRt2wm2cWuYCArQ1vK1DynJhosCOXk75HCw',
+  'rgq9dHRvx7VpJk0tFcyQ0KfjMp7X5CxKMBeHi3btNv2tua4i',
+  'WIqtvrFQNamfOmWNIsV88nDF8cwkNILjLUl30m5OwgIHdp9M',
+  'EFnc0fWBWXKjJYIVvPnh0Vn0uYLKizb7zBlIRX2FEt3ILwuL',
+  '4cnaXiywaYXPok9PSSACblX1wQLnrCCrZPFmaaIPRdtAGCft',
+  'n9tHVVz3quPPMuDzjOoaIV2TD3NUPznRh4tezhhZ8xWkiFhK',
+  'hLPyZLtp3qe6vLQqXFAL4gP46xnDpWTUbnIpk4080grT8Ggn',
+  '9Tjrwtq8tTHfkOxkZv6UsqtnDSO6UwPMLc0s4hsAQDUB2CdW',
+  'ShAbMH3XuQhJkUt6Qfms2wlatSVXOlQNaaKvnNgDoBWJzcce',
+  '5uRPAgSqAflANvTjVq6ngAyqkGR1jmqFtCcOFhMqhpsa4DK8',
+  'yGyxVfnZTkFhP2bdBoxEUd0IHJXokkrgrH4FUALnqe5DAsBO',
+  'Li0lAAQTfVJEfP1fMOAWWVADyuObcFAoidM9z9bXyMFHGITw',
+  '9LDVji4V2bcT2AE0cy3skDiChvwM9fpNTkWc7OTpwop8EJ1e',
+  'v0nJVTjd0UDZi488AMow1pvGIIGKLbLyi1759WKEJIA9ZMFO',
+  'Zs6K5KEk1SALePBsHhCYNKE8lbmEriEU4Hn9jSL2GPWvdXVp',
+  'at6VxYIbqRcCRj6o02nivcPETpyr3IzxodOu0zM4mtoJ1wba',
+  '1YtQfh5zNyrUBrcx6L6Zf0rlxorr9dY3kAMvy4fy6sqNcOr1',
+  'WqjTSsOYmuf9kClp5LlKuHlF7K8g2T8STNiv4V9oZcZrxkCY',
+  'qRxBOTmwRQglJ5JxhfcOvYdmCn279AWrwOE7PsJQnJjT0ly3',
+  'NIzohCbkV7KveTlh0wnLkOOhQXD357L2qRhzhPFi8bmxBlIV',
+  'AU3VyI6Arr0iMgyXXwxwE9Wm9gBZOTmALzUL1S3ooIkLVm2h',
+  'SRRJN9nn00K8ttGS6CAHAcAne9fL1G3PRAOmrVnHZtvFjk2P',
+  'rSgOJrV9cMTJt3uF7EYsnd58lvOEjL8WXU0KROakSCFllzIM',
+  'YAqvm0Tkjf3rdVnHVFHpxFPhaKLx0PajosnVvEeCvxZZrgZT',
+  'SfQUgjANYZPBCrutCexlRXOI3ntsPs3YBGtkmSO29EKQnrMI',
+  'JlplxrEiGKAEyootuvprM5OTBjR6X0RlJI8ojhrhYexbyNLB',
+  'oPGEbIVXSOJaho064oV0CAE9hn31cWdOcXEgSMPkOYBQlcyC',
+  '6htpcy1kX2EvSjEW2bFT3u75PvvqFN2aa6orS39J5X39QntN',
+  'on7UMj0gb1xPUJpPnXQcaY7jhVXV0dtRmKTV0fF2eMI1c8O6',
+  'ZYnaYTWapNLrIZr7Xd7qkUP200WCtBK7qRU4wl3PbJm9B70X',
+  'IT8ydDvyaM4Y5o1sHVRvKrHbxUnKNohcXqzuqFfJf2HdfEqV',
+  '6rHkKkuH4DG4w3tvrXb3ojhI7hpW6rLYYPH8RHdeF3b0zLHv',
+  'p9qat6mvRoBXxdXFJ2H7ul7ZeRjIOMva1orZbVnLhUuWdekb',
+  'uzDHg8PjrE6ySUAAzmlYulp8qvUmTNM3EUn3Vaf5tFovrJop',
+  'mtNXwGuPRMlTOgEhrmpiu0bG7O38DUsR9JIY9fktVV3BetTn',
+  'a36jbvNSl8iXk1LabtzRXvZU6c748V5MlYqGRRWPeppejzie',
+  'l6f3jar49LjiC26akoajEllvvtnpDJSgNH9ufMaJKPB7o9VB',
+  'HemkNktg7QPDmWu69BKmUhpYuihur9VZE3aWKVP74D9f5gGF',
+  'L5fEixtxkaYIEkJCa4J3gXocLg4X8qd5h1pv3sqPwTS3Bpc5',
+  '3h69JpqgTVWcyLolXiOu7RZXqF4TMRbhazFh67aKpeanLXax',
+  'VkYrYpWUBapE9aKLnRFT7eNv0Z75hQfuDSuKVZZrAWAfqEDs',
+  'UdLe7OFntiO7LeDa9WXZTDC6oX2LIusln5LIudUp4eTRoDgS',
+  'gZwztcoQ4MG9gEdPFQE7NKh1O5I71ATBjx3h9WkKpEFEmvUd',
+  'rkbVckmAXnDXF64UTObfPSUzCVbVboR4U5OTiXiWHIVySUqp',
+  'pjRnf4fULTTHjrZmdCTYSFR5cZ64xuPf3ix8b6O4Uebcn8RB',
+  '2GhUATaMfT9NzThMU4CzVdXKKbs3ggacU74n8RZMh8mUN4c0',
+  'Fp2o5v33pHfnZ2yBnzCLcvHyj1syBysFce7wW9UXndMWtQpb',
+  'Yx2PgF8YZ9iUDkmSonL91scknOd0nWavxUWLeGxhmwYjOKdm',
+  'c02uf2pjPS3L6RDqMyHo2ioxByLNRcgrkEknrfwciBLGXGGt',
+  'ojkE9DkuPaeu15fc2wor0tKyMEksaXjdLsZEJwBv0YuEMGw4',
+  'tStR8MENd6hzXnnxRzv4IhSVzDX6VLBicVsTjbSvekw31p10',
+  'PXJFVQwpGD6XCIfENSBEV6c9TvDoKoESR2u32Z7GrWaoN0bQ',
+  'CGnYD9o9rUrdFXzJDf9zJU1f5thFD3IArhdrLuFIShWDjrpa',
+  'k4CGzFn023NdPB3CcQgzJQJM6zoPCUIbG0cgCaqnl3Hht9cK',
+  'DkcIy3qVDe7MHfyqYARvooNA43qh8Fxkb6PbyS6pONAjjWjK',
+  '4OGfwhaFSzq0NEinqcdSNpOld1L0isLN0wF1GzikWxuZWgMX',
+  '4gYQpwBmuPUF2LaV4t91HCtn9rXZvPkHc0saipwNDgX8Mr51',
+  'vX6P37R4AcRtLCmx70lbq9BdTalndaNQbjvl0182IxyiwwBi',
+  '8iydDTTTCp06m1100BD1gjz26F1wWzDBUbgSz3QtXxKiadDn',
+  '0UGdMXlHfPsuGQpQAF9DGoVnKlE2QMkR1DEkufAs3zdklSpt',
+  'OaRM2vt499iGFrEFq1z1MXOqRaxpSBuvsRn1LDsz2C5eD36y',
+  'WbA4AoABDVX4Q9pqvGchF13uMCZzSOfaKacKk1zHKJJJcphV',
+  'dZ8F5nezJHU8VsNmhAU0uoshrEizeghoIWj1fE4vFqzIcIfU',
+  '9FPhbjHwCOViH0pu96qmz5qrrwkMw0070dZbQKDB6Kd1FW53',
+  'jsrA4CUse5sjySnA73R9SWKzJNOESmiETmAW5zB3Pm8N9SWv',
+  '7HuJpR14sjBVyqQD6Y5yzBaGnmmfAB2dRuytOPVsP9j8HZN6',
 ].join('');  // 관리자 암호 (95줄)
 
 
@@ -15514,10 +15620,73 @@ const boot7=setInterval(function(){
 })();
 </script>
 
+<script>
+/* ================================================================
+   ⚖️ 확장팩 8탄 — 몹 밸런스 곡선 + 오프라인 모드
+   ① 초반(스테이지 1~35 = 1-1 ~ 4-5 구간) 몹 약화, 이후 대폭 강화
+   ② 서버가 꺼져도 게임 계속 가능 + 상단 "업데이트중.." 배너
+   ================================================================ */
+(function(){
+'use strict';
+
+/* ---------- ① 몹 밸런스 곡선 ---------- */
+// 초반(≤35): 0.5배에서 시작해 서서히 1배로 (신규 유저 진입장벽 제거)
+// 이후(>35): HP 1.5배→최대 4배, 공격 1.3배→최대 2.5배로 점점 강해짐
+function hpCurve(s){
+  if(s<=35) return 0.50 + 0.50*(s/35);
+  return 1.5 + Math.min(2.5, (s-35)*0.02);
+}
+function atkCurve(s){
+  if(s<=35) return 0.50 + 0.50*(s/35);
+  return 1.3 + Math.min(1.2, (s-35)*0.01);
+}
+const _mHP = BAL.monsterHP, _mATK = BAL.monsterATK;
+BAL.monsterHP  = function(s){ return _mHP(s)  * hpCurve(s); };
+BAL.monsterATK = function(s){ return _mATK(s) * atkCurve(s); };
+
+/* ---------- ② 오프라인 모드 배너 + 서비스워커 ---------- */
+const bnr=document.createElement('div');
+bnr.id='offlineBanner';
+bnr.style.cssText='position:fixed;top:0;left:0;right:0;z-index:950;display:none;'
+ +'background:linear-gradient(90deg,#3a1030,#241030,#3a1030);border-bottom:2px solid var(--gold);'
+ +'color:var(--gold);text-align:center;font-size:12px;padding:6px 8px;letter-spacing:1px;';
+bnr.innerHTML='🔧 <b>업데이트중..</b> 서버 점검/오프라인 상태입니다 — 게임은 계속 즐길 수 있어요! (자동 재연결 대기 중 <span id="obDot">.</span>)';
+document.body.appendChild(bnr);
+let dots=0;
+setInterval(function(){
+  try{
+    const off = (typeof NET!=='undefined') ? !NET.isOnline() : false;
+    bnr.style.display = off ? 'block' : 'none';
+    if(off){
+      dots=(dots+1)%4;
+      const d=document.getElementById('obDot');
+      if(d) d.textContent='.'.repeat(dots+1);
+    }
+  }catch(e){}
+}, 1500);
+// 서비스워커 등록 (https/localhost에서 게임을 캐시 → 서버가 꺼져도 접속 시 로드됨)
+try{
+  if('serviceWorker' in navigator && (location.protocol==='https:'||['localhost','127.0.0.1'].includes(location.hostname))){
+    navigator.serviceWorker.register('/sw.js').then(function(){
+      console.log('오프라인 캐시 활성화');
+    }).catch(function(){});
+  }
+}catch(e){}
+
+const boot8=setInterval(function(){
+  try{
+    if(typeof S!=='undefined'&&S){
+      clearInterval(boot8);
+      log('<span class="p">⚖️ 확장팩 8탄 로드! 신규 차원 12개(스테이지 2000까지) + 밸런스 개편 + 오프라인 모드!</span>');
+    }
+  }catch(e){}
+}, 1200);
+})();
+</script>
+
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79"}' crossorigin="anonymous"></script>
 </body>
 </html>
 
 <!-- Auto-save on page leave -->
-

@@ -40,9 +40,101 @@ HOST = os.environ.get('RIFT_HOST', '0.0.0.0')
 
 # 🎯 관리자(개발자) 비밀번호 — 클라이언트 ADMIN_PASSWORD 와 반드시 동일해야 함
 ADMIN_PASSWORD = os.environ.get('RIFT_ADMIN_PASS') or (
-    'adadawdsajdiqahdxahudguxajhdhasgdxhagdahzgdahgrhagert'
-    '324513461741241247162415462712471264521561756607906'
-    'jasbfuhsabfuhsgbauhabf')
+    'UFbNb2ETVESlhB7A7VdpYIdryMbHMstrJG3Z3XwmclmjNioU'
+    '51yNPRCne7KbhYSlku5Cdg2yfwYFyK1a8sD3MbUTypx7buIT'
+    'XSazN2hQqKO4C6pncQe31pvBChNzBYC1Lb4HR9FXC6z2OB3T'
+    'b2uEXGkR1UuoXKgPgD6oDFUYk1a4MXde4eWWGFh9IYChnRO3'
+    'E6R4XGOCN1JZ7g5XJVfluiPCcG08p1ZhJeTgLDea5PwlWrj7'
+    'AQBqzGWtTu9XHyKeUSxwBWrWwMUTm84m0BHOfl56CzvFuUc1'
+    'WtiOX3NxKCNJ5gRddwwZoNTNFQGV5vMSUVSpnr2S6waQxWfj'
+    'DActqcJZPs9nmiNEARD1FmNEutoyOKzgz9mgYEs4pLIBgpZH'
+    'ZaHnqhnLZPVMXr4YS4gJv5lyCbPf3OLUQKkiRZaINT517DLQ'
+    '7l99QJN5iykcE5QxUe2F2i0buTczc56MlKHDRapWyT25w1Z1'
+    'ZcUrLa5XxdjQHoi5EtA26Kl0dTNFM6seeFTQACmAhTp381AO'
+    'EEUhjDFa9XHnQg3wKjxnyF2Jc9joSOOp8laUCSKrqe5gjuEm'
+    'PP0frKMJXF3Eq39nxrqaaAnCZXQwyXQOFK6sUV1E8SFzqjeM'
+    '0ED5WyKSrtgGUaTzdlzhAsnXoEBx9DdbxWuNS4mCgVM9Kydo'
+    'hoN6J8lAGWV7Rn0E555gub5CO5vTvbnYlHybjZN1IToBRvu9'
+    'lzP93nmGO8OVRCLUl6GA5PbUkS9mKxGl0GwtjcfRC0q1bEog'
+    'UsRgguaIj0v5apIT8gOituyNBmocaM0LZm8rtMBzD0E7L5T6'
+    'fPtoYTo8UMUtStJJCBCfbhfHOBeJrUcbEZZJ82n8E0z7XPzv'
+    '6eTxIXjBfwxJCTl1PFnd0bxhFsA9Vk21ZRPtKJkleCxl6lmk'
+    'E8gddNtLuOQTRh0kFl1loqe2pQJDG5d0SWrBvG5MeUv5SFMQ'
+    'OTgKLUZPCwV1jeVR8XDtHo9qpoMdDCWt1axmhtRa5GuCQYoX'
+    'wi1D7Z6czHlPZGSZDRAm48BmRvjeY0Ccx1Jo1yAkXusU9emX'
+    'GyD3wvKtPVKMeZM2d8IxRMEg0YbWLrjEeXUik8UG9LHNkswb'
+    'zQnWARdVmk3SEHer6X5h7N1AQLs4Mp821nJLy6HJk36A045p'
+    'zKT2NaJeNDP5lRuV2WPc0sjv6GFKkPe1BU9dUlyzMDQDEpgj'
+    'cbAzJM4U4QjWSIkYpGk7IKSW9nVK4R1sGleyBcclzcmYC6fg'
+    'z7XdSHX48KHZAot0Fhrv3oahCgX0VNMQjYyRtlPM3EEc455C'
+    'BFL7KjmCVbPlHpU4TeCcPhAvIDrrqbjnWL5G3iiSc0QLsFOh'
+    'iKGFNI4nXxxfBriUBXiuPvVjCDbQyrwSGFVoah1qQ9SYqvNU'
+    'CHz9x4XWc6OGgcRt2wm2cWuYCArQ1vK1DynJhosCOXk75HCw'
+    'rgq9dHRvx7VpJk0tFcyQ0KfjMp7X5CxKMBeHi3btNv2tua4i'
+    'WIqtvrFQNamfOmWNIsV88nDF8cwkNILjLUl30m5OwgIHdp9M'
+    'EFnc0fWBWXKjJYIVvPnh0Vn0uYLKizb7zBlIRX2FEt3ILwuL'
+    '4cnaXiywaYXPok9PSSACblX1wQLnrCCrZPFmaaIPRdtAGCft'
+    'n9tHVVz3quPPMuDzjOoaIV2TD3NUPznRh4tezhhZ8xWkiFhK'
+    'hLPyZLtp3qe6vLQqXFAL4gP46xnDpWTUbnIpk4080grT8Ggn'
+    '9Tjrwtq8tTHfkOxkZv6UsqtnDSO6UwPMLc0s4hsAQDUB2CdW'
+    'ShAbMH3XuQhJkUt6Qfms2wlatSVXOlQNaaKvnNgDoBWJzcce'
+    '5uRPAgSqAflANvTjVq6ngAyqkGR1jmqFtCcOFhMqhpsa4DK8'
+    'yGyxVfnZTkFhP2bdBoxEUd0IHJXokkrgrH4FUALnqe5DAsBO'
+    'Li0lAAQTfVJEfP1fMOAWWVADyuObcFAoidM9z9bXyMFHGITw'
+    '9LDVji4V2bcT2AE0cy3skDiChvwM9fpNTkWc7OTpwop8EJ1e'
+    'v0nJVTjd0UDZi488AMow1pvGIIGKLbLyi1759WKEJIA9ZMFO'
+    'Zs6K5KEk1SALePBsHhCYNKE8lbmEriEU4Hn9jSL2GPWvdXVp'
+    'at6VxYIbqRcCRj6o02nivcPETpyr3IzxodOu0zM4mtoJ1wba'
+    '1YtQfh5zNyrUBrcx6L6Zf0rlxorr9dY3kAMvy4fy6sqNcOr1'
+    'WqjTSsOYmuf9kClp5LlKuHlF7K8g2T8STNiv4V9oZcZrxkCY'
+    'qRxBOTmwRQglJ5JxhfcOvYdmCn279AWrwOE7PsJQnJjT0ly3'
+    'NIzohCbkV7KveTlh0wnLkOOhQXD357L2qRhzhPFi8bmxBlIV'
+    'AU3VyI6Arr0iMgyXXwxwE9Wm9gBZOTmALzUL1S3ooIkLVm2h'
+    'SRRJN9nn00K8ttGS6CAHAcAne9fL1G3PRAOmrVnHZtvFjk2P'
+    'rSgOJrV9cMTJt3uF7EYsnd58lvOEjL8WXU0KROakSCFllzIM'
+    'YAqvm0Tkjf3rdVnHVFHpxFPhaKLx0PajosnVvEeCvxZZrgZT'
+    'SfQUgjANYZPBCrutCexlRXOI3ntsPs3YBGtkmSO29EKQnrMI'
+    'JlplxrEiGKAEyootuvprM5OTBjR6X0RlJI8ojhrhYexbyNLB'
+    'oPGEbIVXSOJaho064oV0CAE9hn31cWdOcXEgSMPkOYBQlcyC'
+    '6htpcy1kX2EvSjEW2bFT3u75PvvqFN2aa6orS39J5X39QntN'
+    'on7UMj0gb1xPUJpPnXQcaY7jhVXV0dtRmKTV0fF2eMI1c8O6'
+    'ZYnaYTWapNLrIZr7Xd7qkUP200WCtBK7qRU4wl3PbJm9B70X'
+    'IT8ydDvyaM4Y5o1sHVRvKrHbxUnKNohcXqzuqFfJf2HdfEqV'
+    '6rHkKkuH4DG4w3tvrXb3ojhI7hpW6rLYYPH8RHdeF3b0zLHv'
+    'p9qat6mvRoBXxdXFJ2H7ul7ZeRjIOMva1orZbVnLhUuWdekb'
+    'uzDHg8PjrE6ySUAAzmlYulp8qvUmTNM3EUn3Vaf5tFovrJop'
+    'mtNXwGuPRMlTOgEhrmpiu0bG7O38DUsR9JIY9fktVV3BetTn'
+    'a36jbvNSl8iXk1LabtzRXvZU6c748V5MlYqGRRWPeppejzie'
+    'l6f3jar49LjiC26akoajEllvvtnpDJSgNH9ufMaJKPB7o9VB'
+    'HemkNktg7QPDmWu69BKmUhpYuihur9VZE3aWKVP74D9f5gGF'
+    'L5fEixtxkaYIEkJCa4J3gXocLg4X8qd5h1pv3sqPwTS3Bpc5'
+    '3h69JpqgTVWcyLolXiOu7RZXqF4TMRbhazFh67aKpeanLXax'
+    'VkYrYpWUBapE9aKLnRFT7eNv0Z75hQfuDSuKVZZrAWAfqEDs'
+    'UdLe7OFntiO7LeDa9WXZTDC6oX2LIusln5LIudUp4eTRoDgS'
+    'gZwztcoQ4MG9gEdPFQE7NKh1O5I71ATBjx3h9WkKpEFEmvUd'
+    'rkbVckmAXnDXF64UTObfPSUzCVbVboR4U5OTiXiWHIVySUqp'
+    'pjRnf4fULTTHjrZmdCTYSFR5cZ64xuPf3ix8b6O4Uebcn8RB'
+    '2GhUATaMfT9NzThMU4CzVdXKKbs3ggacU74n8RZMh8mUN4c0'
+    'Fp2o5v33pHfnZ2yBnzCLcvHyj1syBysFce7wW9UXndMWtQpb'
+    'Yx2PgF8YZ9iUDkmSonL91scknOd0nWavxUWLeGxhmwYjOKdm'
+    'c02uf2pjPS3L6RDqMyHo2ioxByLNRcgrkEknrfwciBLGXGGt'
+    'ojkE9DkuPaeu15fc2wor0tKyMEksaXjdLsZEJwBv0YuEMGw4'
+    'tStR8MENd6hzXnnxRzv4IhSVzDX6VLBicVsTjbSvekw31p10'
+    'PXJFVQwpGD6XCIfENSBEV6c9TvDoKoESR2u32Z7GrWaoN0bQ'
+    'CGnYD9o9rUrdFXzJDf9zJU1f5thFD3IArhdrLuFIShWDjrpa'
+    'k4CGzFn023NdPB3CcQgzJQJM6zoPCUIbG0cgCaqnl3Hht9cK'
+    'DkcIy3qVDe7MHfyqYARvooNA43qh8Fxkb6PbyS6pONAjjWjK'
+    '4OGfwhaFSzq0NEinqcdSNpOld1L0isLN0wF1GzikWxuZWgMX'
+    '4gYQpwBmuPUF2LaV4t91HCtn9rXZvPkHc0saipwNDgX8Mr51'
+    'vX6P37R4AcRtLCmx70lbq9BdTalndaNQbjvl0182IxyiwwBi'
+    '8iydDTTTCp06m1100BD1gjz26F1wWzDBUbgSz3QtXxKiadDn'
+    '0UGdMXlHfPsuGQpQAF9DGoVnKlE2QMkR1DEkufAs3zdklSpt'
+    'OaRM2vt499iGFrEFq1z1MXOqRaxpSBuvsRn1LDsz2C5eD36y'
+    'WbA4AoABDVX4Q9pqvGchF13uMCZzSOfaKacKk1zHKJJJcphV'
+    'dZ8F5nezJHU8VsNmhAU0uoshrEizeghoIWj1fE4vFqzIcIfU'
+    '9FPhbjHwCOViH0pu96qmz5qrrwkMw0070dZbQKDB6Kd1FW53'
+    'jsrA4CUse5sjySnA73R9SWKzJNOESmiETmAW5zB3Pm8N9SWv'
+    '7HuJpR14sjBVyqQD6Y5yzBaGnmmfAB2dRuytOPVsP9j8HZN6')
 # 관리자 닉네임 — 클라이언트 ADMIN_NICK 과 동일해야 함 (구매 알림 우편 수신자)
 ADMIN_NICK = os.environ.get('RIFT_ADMIN_NICK') or '개발자'
 DB_PATH = os.environ.get('RIFT_DB') or os.path.join(
@@ -60,11 +152,17 @@ API_PATHS = {
     '/mail/list', '/mail/take', '/mail/send', '/ping',
     '/click/report', '/ban/check',
     '/admin/cmd', '/admin/pending', '/admin/ban', '/admin/unban',
+    '/admin/rank/set', '/admin/rank/list', '/admin/rank/get',
     '/purchase/request', '/purchase/list', '/purchase/approve', '/purchase/reject', '/purchase/mine',
 }
 
 # index.html 등 정적 파일을 찾을 폴더 (기본: server.py 와 같은 폴더)
 STATIC_DIR = os.environ.get('RIFT_STATIC_DIR') or os.path.dirname(os.path.abspath(__file__))
+
+# 🔗 SEO: 서버가 내보내는 모든 HTML 페이지의 <head>에 자동 삽입되는 canonical 태그
+#    (검색엔진에 공식 주소를 알려줌 — index.html 파일을 직접 안 고쳐도 항상 적용됨)
+CANONICAL_URL = os.environ.get('RIFT_CANONICAL') or 'https://manmulsang.kro.kr/'
+CANONICAL_TAG = ('<link rel="canonical" href="%s" />' % CANONICAL_URL).encode('utf-8')
 
 _MIME = {
     '.html': 'text/html; charset=utf-8',
@@ -89,7 +187,7 @@ _rate_lock = threading.Lock()
 # 이 경로들은 게임 동작에 필수인 폴링/조회라 속도 제한에서 제외한다
 # (도배 위험이 낮은 읽기성 요청 · 게임이 자동으로 보내는 요청)
 RATE_EXEMPT = {
-    '/ping', '/ban/check', '/click/report', '/admin/pending',
+    '/ping', '/ban/check', '/click/report', '/admin/pending', '/admin/rank/get',
     '/purchase/mine', '/purchase/list',
     '/chat/list', '/rank/list', '/online', '/guild/list', '/guild/info',
     '/boss/state', '/mail/list', '/auction/list', '/auction/mine',
@@ -117,7 +215,50 @@ def rate_ok(ip, path=None):
 def db():
     conn = sqlite3.connect(DB_PATH, timeout=10)
     conn.row_factory = sqlite3.Row
+    # ⚡ 성능 튜닝: WAL 모드 + 동기화 완화 → 쓰기 속도 대폭 향상
+    try:
+        conn.execute('PRAGMA journal_mode=WAL')
+        conn.execute('PRAGMA synchronous=NORMAL')
+        conn.execute('PRAGMA cache_size=-8000')
+        conn.execute('PRAGMA temp_store=MEMORY')
+    except Exception:
+        pass
     return conn
+
+
+# ⚡ 정적 파일 메모리 캐시: 디스크를 매번 읽지 않고 RAM에서 즉시 응답.
+#    gzip 압축본도 함께 캐시 → 670KB짜리 index.html이 ~150KB로 전송되어 로딩 급가속.
+import gzip as _gzip
+_static_cache = {}          # fpath -> {'mtime':, 'raw':, 'gz':}
+_static_lock = threading.Lock()
+
+def get_static_cached(fpath):
+    try:
+        mtime = os.path.getmtime(fpath)
+    except Exception:
+        return None
+    with _static_lock:
+        ent = _static_cache.get(fpath)
+        if ent and ent['mtime'] == mtime:
+            return ent
+    try:
+        with open(fpath, 'rb') as f:
+            raw = f.read()
+    except Exception:
+        return None
+    gz = None
+    ext = os.path.splitext(fpath)[1].lower()
+    if ext in ('.html', '.js', '.css', '.json', '.xml', '.txt') and len(raw) > 1024:
+        try:
+            gz = _gzip.compress(raw, 6)
+        except Exception:
+            gz = None
+    ent = {'mtime': mtime, 'raw': raw, 'gz': gz}
+    with _static_lock:
+        _static_cache[fpath] = ent
+        if len(_static_cache) > 64:
+            _static_cache.pop(next(iter(_static_cache)), None)
+    return ent
 
 
 @contextmanager
@@ -242,6 +383,13 @@ def init_db():
             status TEXT DEFAULT 'pending',   -- pending|approved|rejected
             ts INTEGER NOT NULL);
         CREATE INDEX IF NOT EXISTS idx_preq ON purchase_req(status, ts);
+
+        -- 👑 개발자 등급 (닉네임 -> 등급 숫자)
+        CREATE TABLE IF NOT EXISTS admin_ranks(
+            nick TEXT PRIMARY KEY,
+            rank INTEGER NOT NULL DEFAULT 1,   -- 1신입 2인턴 3만물상감시자 4차원감독관 5균열관리자 6부개발자 7개발자
+            granted_by TEXT DEFAULT '',
+            ts INTEGER NOT NULL);
         ''')
         # 기존 DB 호환: 없는 컬럼 자동 추가
         for tbl, col, decl in [('mail', 'item_json', "TEXT DEFAULT ''"),
@@ -259,6 +407,36 @@ def init_db():
 
 def now(): return int(time.time())
 def now_ms(): return int(time.time() * 1000)
+
+
+# ============================================================================
+# 👑 개발자 등급 시스템
+# ----------------------------------------------------------------------------
+#  7 개발자        : 전부 가능 + 승급/강등 + 강제 이름 변경 (ADMIN_NICK 은 항상 7)
+#  6 부개발자      : 전부 가능 (승급·이름변경 제외)
+#  5 균열 관리자   : 유저 원격 조작 전체(직업 포함) + 상품 지급/회수 + 밴 + 구매
+#  4 차원 감독관   : 유저 원격 조작(골드·스탯·스테이지·레벨) + 밴 + 구매
+#  3 만물상 감시자 : 유저 원격 골드 지급 + 밴 + 구매
+#  2 인턴          : 밴 + 현질(구매) 승인
+#  1 신입          : 밴만 가능
+#  0 일반 유저     : 콘솔 사용 불가
+# ============================================================================
+RANK_NAMES = {7:'개발자', 6:'부개발자', 5:'균열 관리자', 4:'차원 감독관',
+              3:'만물상 감시자', 2:'인턴', 1:'신입', 0:'일반'}
+
+def rank_of(c, nick):
+    if not nick:
+        return 0
+    if nick == ADMIN_NICK:
+        return 7
+    row = c.execute('SELECT rank FROM admin_ranks WHERE nick=?', (nick,)).fetchone()
+    return int(row['rank']) if row else 0
+
+def cmd_min_rank(field):
+    """admin_cmd 필드별 필요 최소 등급"""
+    return {'gold': 3, 'stat': 4, 'stage': 4, 'level': 4,
+            'job': 5, 'grant_product': 5, 'revoke_product': 5,
+            'rename': 7}.get(field, 6)
 
 
 # ============================================================================
@@ -856,6 +1034,14 @@ def api(path, q, body):
             token = str(P('token', ''))[:64].strip()
             if not nick or not token:
                 return {'ok': False, 'error': 'bad_request'}
+            # 👑 등급 1~6(개발자 미만 스태프)은 이름 변경 불가:
+            #    이 토큰이 소유한 닉 중 스태프 등급이 있으면 다른 닉으로 변경 거부
+            owned = c.execute('SELECT nick FROM nick_owner WHERE token=?', (token,)).fetchall()
+            for o in owned:
+                r0 = rank_of(c, o['nick'])
+                if 1 <= r0 <= 6 and o['nick'] != nick:
+                    return {'ok': False, 'error': 'rank_locked',
+                            'msg': '스태프 등급(%s)은 이름을 변경할 수 없습니다.' % RANK_NAMES[r0]}
             row = c.execute('SELECT token FROM nick_owner WHERE nick=?', (nick,)).fetchone()
             if row and row['token'] != token:
                 return {'ok': False, 'error': 'taken'}
@@ -903,14 +1089,20 @@ def api(path, q, body):
         if path == '/admin/cmd':
             if str(P('pass', '')) != ADMIN_PASSWORD:
                 return {'ok': False, 'error': 'auth_failed'}
+            admin_nick = str(P('admin', ''))[:20].strip()
+            my_rank = rank_of(c, admin_nick)
             target = str(P('target', ''))[:20].strip()
             field = str(P('field', ''))[:20].strip()
             value = str(P('value', ''))[:40]
             if not target or field not in ('gold', 'stat', 'stage', 'level', 'job',
-                                            'grant_product', 'revoke_product'):
+                                            'grant_product', 'revoke_product', 'rename'):
                 return {'ok': False, 'error': 'bad_request'}
+            need = cmd_min_rank(field)
+            if my_rank < need:
+                return {'ok': False, 'error': 'rank_denied',
+                        'need': RANK_NAMES.get(need, str(need)), 'my_rank': RANK_NAMES.get(my_rank)}
             c.execute('INSERT INTO admin_cmd(target,field,value,admin,ts) VALUES(?,?,?,?,?)',
-                      (target, field, value, str(P('admin', ''))[:20], now()))
+                      (target, field, value, admin_nick, now()))
             return {'ok': True}
 
         if path == '/admin/pending':
@@ -956,6 +1148,8 @@ def api(path, q, body):
         if path == '/purchase/list':
             if str(P('pass', '')) != ADMIN_PASSWORD:
                 return {'ok': False, 'error': 'auth_failed'}
+            if rank_of(c, str(P('admin',''))[:20].strip()) < 2:
+                return {'ok': False, 'error': 'rank_denied', 'need': RANK_NAMES[2]}
             rows = c.execute("SELECT id,nick,product,product_name,depositor,ts FROM purchase_req "
                              "WHERE status='pending' ORDER BY ts ASC LIMIT 100").fetchall()
             return {'ok': True, 'requests': [dict(r) for r in rows]}
@@ -964,6 +1158,8 @@ def api(path, q, body):
         if path == '/purchase/approve':
             if str(P('pass', '')) != ADMIN_PASSWORD:
                 return {'ok': False, 'error': 'auth_failed'}
+            if rank_of(c, str(P('admin',''))[:20].strip()) < 2:
+                return {'ok': False, 'error': 'rank_denied', 'need': RANK_NAMES[2]}
             rid = int(P('id', 0) or 0)
             row = c.execute("SELECT nick,product FROM purchase_req WHERE id=? AND status='pending'",
                             (rid,)).fetchone()
@@ -979,6 +1175,8 @@ def api(path, q, body):
         if path == '/purchase/reject':
             if str(P('pass', '')) != ADMIN_PASSWORD:
                 return {'ok': False, 'error': 'auth_failed'}
+            if rank_of(c, str(P('admin',''))[:20].strip()) < 2:
+                return {'ok': False, 'error': 'rank_denied', 'need': RANK_NAMES[2]}
             rid = int(P('id', 0) or 0)
             c.execute("UPDATE purchase_req SET status='rejected' WHERE id=?", (rid,))
             return {'ok': True}
@@ -995,6 +1193,8 @@ def api(path, q, body):
         if path == '/admin/ban':
             if str(P('pass', '')) != ADMIN_PASSWORD:
                 return {'ok': False, 'error': 'auth_failed'}
+            if rank_of(c, str(P('admin',''))[:20].strip()) < 1:
+                return {'ok': False, 'error': 'rank_denied', 'need': RANK_NAMES[1]}
             target = str(P('target', ''))[:20].strip()
             minutes = max(1, int(P('minutes', 60) or 60))
             if not target:
@@ -1005,9 +1205,58 @@ def api(path, q, body):
                       (target, until, 'admin', now(), until, 'admin', now()))
             return {'ok': True, 'until': until}
 
+        # ---------- 👑 개발자 등급 관리 ----------
+        if path == '/admin/rank/get':
+            # 공개: 닉네임의 등급 조회 (콘솔 접근 판단용 · 등급 숫자만 노출)
+            nick = str(P('nick', ''))[:20].strip()
+            r0 = rank_of(c, nick)
+            return {'ok': True, 'nick': nick, 'rank': r0,
+                    'rank_name': RANK_NAMES.get(r0, '일반')}
+
+        if path == '/admin/rank/set':
+            # 오직 등급 7(개발자)만 승급/강등 가능
+            if str(P('pass', '')) != ADMIN_PASSWORD:
+                return {'ok': False, 'error': 'auth_failed'}
+            admin_nick = str(P('admin', ''))[:20].strip()
+            if rank_of(c, admin_nick) < 7:
+                return {'ok': False, 'error': 'rank_denied',
+                        'msg': '승급/강등은 [개발자] 등급만 가능합니다.'}
+            target = str(P('target', ''))[:20].strip()
+            new_rank = max(0, min(6, int(P('rank', 0) or 0)))   # 7(개발자)은 부여 불가
+            if not target:
+                return {'ok': False, 'error': 'bad_request'}
+            if target == ADMIN_NICK:
+                return {'ok': False, 'error': 'cannot_change_owner'}
+            if new_rank == 0:
+                c.execute('DELETE FROM admin_ranks WHERE nick=?', (target,))
+            else:
+                c.execute('INSERT INTO admin_ranks(nick,rank,granted_by,ts) VALUES(?,?,?,?) '
+                          'ON CONFLICT(nick) DO UPDATE SET rank=?, granted_by=?, ts=?',
+                          (target, new_rank, admin_nick, now(), new_rank, admin_nick, now()))
+            # 대상에게 알림 우편
+            c.execute('INSERT INTO mail(receiver,sender,subject,body,gold,ts) VALUES(?,?,?,?,0,?)',
+                      (target, '운영팀', '등급 변경',
+                       '당신의 개발자 등급이 [%s](으)로 변경되었습니다.' % RANK_NAMES.get(new_rank, '일반'),
+                       now()))
+            return {'ok': True, 'target': target, 'rank': new_rank,
+                    'rank_name': RANK_NAMES.get(new_rank)}
+
+        if path == '/admin/rank/list':
+            if str(P('pass', '')) != ADMIN_PASSWORD:
+                return {'ok': False, 'error': 'auth_failed'}
+            if rank_of(c, str(P('admin',''))[:20].strip()) < 6:
+                return {'ok': False, 'error': 'rank_denied'}
+            rows = c.execute('SELECT nick,rank,granted_by,ts FROM admin_ranks ORDER BY rank DESC').fetchall()
+            out = [dict(r) for r in rows]
+            for d in out:
+                d['rank_name'] = RANK_NAMES.get(d['rank'], '?')
+            return {'ok': True, 'staff': out}
+
         if path == '/admin/unban':
             if str(P('pass', '')) != ADMIN_PASSWORD:
                 return {'ok': False, 'error': 'auth_failed'}
+            if rank_of(c, str(P('admin',''))[:20].strip()) < 1:
+                return {'ok': False, 'error': 'rank_denied', 'need': RANK_NAMES[1]}
             target = str(P('target', ''))[:20].strip()
             c.execute('DELETE FROM bans WHERE nick=?', (target,))
             return {'ok': True}
@@ -1064,14 +1313,41 @@ class Handler(BaseHTTPRequestHandler):
                                 'hint': 'server.py 와 같은 폴더에 index.html 을 두세요.'}, 404)
         ext = os.path.splitext(fpath)[1].lower()
         mime = _MIME.get(ext, 'application/octet-stream')
-        try:
-            with open(fpath, 'rb') as f:
-                data = f.read()
-        except Exception as e:
-            return self._send({'ok': False, 'error': str(e)}, 500)
+        ent = get_static_cached(fpath)
+        if not ent:
+            return self._send({'ok': False, 'error': 'read_failed'}, 500)
+        data = ent['raw']
+        # 🔗 HTML 파일이면 <head>에 canonical 태그 자동 삽입 (이미 있으면 건너뜀)
+        if ext == '.html' and b'rel="canonical"' not in data and b"rel='canonical'" not in data:
+            try:
+                if b'<head>' in data:
+                    data = data.replace(b'<head>', b'<head>\n    ' + CANONICAL_TAG, 1)
+                elif b'<meta charset' in data:
+                    idx = data.find(b'<meta charset')
+                    end = data.find(b'>', idx)
+                    if end != -1:
+                        data = data[:end+1] + b'\n    ' + CANONICAL_TAG + data[end+1:]
+            except Exception:
+                pass
+        # ⚡ 클라이언트가 gzip을 지원하면 압축본 전송 (전송량 ~75% 절감 → 초고속 로딩)
+        use_gz = False
+        if ent['gz'] and data is ent['raw']:
+            ae = (self.headers.get('Accept-Encoding') or '')
+            if 'gzip' in ae:
+                data = ent['gz']; use_gz = True
+        elif ext == '.html':
+            ae = (self.headers.get('Accept-Encoding') or '')
+            if 'gzip' in ae:
+                try:
+                    data = _gzip.compress(data, 6); use_gz = True
+                except Exception:
+                    pass
         self.send_response(200)
         self.send_header('Content-Type', mime)
         self.send_header('Access-Control-Allow-Origin', '*')
+        if use_gz:
+            self.send_header('Content-Encoding', 'gzip')
+        self.send_header('Cache-Control', 'no-cache')   # 항상 최신 확인(캐시는 서버 RAM이 담당)
         self.send_header('Content-Length', str(len(data)))
         self.end_headers()
         self.wfile.write(data)

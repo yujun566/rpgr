@@ -143,7 +143,7 @@ _lock = threading.Lock()
 
 # 이 API 경로 목록에 없는 GET 요청은 정적 파일(게임 index.html 등)로 서빙한다.
 API_PATHS = {
-    '/chat/send', '/chat/list', '/rank/submit', '/rank/list', '/online',
+    '/chat/send', '/chat/list', '/chat/poll', '/rank/submit', '/rank/list', '/online',
     '/guild/create', '/guild/join', '/guild/leave', '/guild/list', '/guild/info', '/boss/state', '/boss/hit',
     '/market/sell', '/market/list', '/market/buy',
     '/auction/create', '/auction/list', '/auction/bid', '/auction/buyout',
@@ -217,7 +217,7 @@ _rate_lock = threading.Lock()
 RATE_EXEMPT = {
     '/ping', '/ban/check', '/click/report', '/admin/pending', '/admin/rank/get',
     '/purchase/mine', '/purchase/list',
-    '/chat/list', '/rank/list', '/online', '/guild/list', '/guild/info',
+    '/chat/list', '/chat/poll', '/rank/list', '/online', '/guild/list', '/guild/info',
     '/boss/state', '/mail/list', '/auction/list', '/auction/mine',
 }
 
@@ -465,6 +465,49 @@ def rank_of(c, nick):
 #   - 매시 정각부터 10분간 개방 (예: 13:00~13:10, 14:00~14:10 ...)
 #   - 참가자(닉네임+직업)를 추적해 모두에게 보여줌 → 함께 공격하는 화면 구성
 # ============================================================================
+# ============================================================================
+# ⚡ 채팅 즉시 전달 (롱폴링)
+#   - 클라이언트가 /chat/poll 로 대기 → 새 메시지가 오는 '순간' 즉시 응답
+#   - 폴링 주기 없이 실시간에 가까운 채팅 반영 (평균 지연 ~0.1초)
+# ============================================================================
+_chat_cond = threading.Condition()
+_chat_seq = {}     # room -> 마지막 메시지 id (메모리 캐시)
+
+def chat_seq(room):
+    with _chat_cond:
+        if room in _chat_seq:
+            return _chat_seq[room]
+    # 최초 조회는 DB에서
+    with _lock, db_ctx() as c:
+        row = c.execute('SELECT IFNULL(MAX(id),0) m FROM chat WHERE room=?', (room,)).fetchone()
+        seq = row['m'] if row else 0
+    with _chat_cond:
+        _chat_seq[room] = max(_chat_seq.get(room, 0), seq)
+        return _chat_seq[room]
+
+def chat_notify(room, new_id):
+    with _chat_cond:
+        _chat_seq[room] = max(_chat_seq.get(room, 0), new_id)
+        _chat_cond.notify_all()
+
+def chat_poll(room, since, wait_sec):
+    """since 이후 새 메시지가 생길 때까지 최대 wait_sec 대기 (락을 잡지 않고 대기)."""
+    wait_sec = max(1, min(20, int(wait_sec or 15)))
+    deadline = time.time() + wait_sec
+    while True:
+        cur = chat_seq(room)
+        if cur > since:
+            with _lock, db_ctx() as c:
+                rows = c.execute('SELECT id,nick,msg,ts FROM chat WHERE room=? AND id>? '
+                                 'ORDER BY id ASC LIMIT 60', (room, since)).fetchall()
+            return {'ok': True, 'messages': [dict(r) for r in rows], 'last': cur}
+        remain = deadline - time.time()
+        if remain <= 0:
+            return {'ok': True, 'messages': [], 'last': cur}
+        with _chat_cond:
+            _chat_cond.wait(min(remain, 5))
+
+
 RAID_OPEN_SEC = 600          # 매시 개방 시간(초) = 10분
 _raid_part = {}              # nick -> {'job':, 'ts':, 'dmg':}
 _raid_lock = threading.Lock()
@@ -741,9 +784,11 @@ def api(path, q, body):
                 return {'ok': False, 'error': 'empty'}
             c.execute('INSERT INTO chat(room,nick,msg,ts) VALUES(?,?,?,?)',
                       (room, nick, msg, now()))
+            new_id = c.execute('SELECT last_insert_rowid() i').fetchone()['i']
             c.execute('DELETE FROM chat WHERE room=? AND id NOT IN '
                       '(SELECT id FROM chat WHERE room=? ORDER BY id DESC LIMIT 200)', (room, room))
-            return {'ok': True}
+            chat_notify(room, new_id)   # ⚡ 대기 중인 유저들에게 즉시 전달
+            return {'ok': True, 'id': new_id}
 
         if path == '/chat/list':
             room = str(P('room', 'global'))[:40]
@@ -1458,6 +1503,15 @@ class Handler(BaseHTTPRequestHandler):
         u = urlparse(self.path)
         if not rate_ok(self.client_address[0], u.path):
             return self._send({'ok': False, 'error': 'rate_limited'}, 429)
+        if u.path == '/chat/poll':   # ⚡ 채팅 롱폴 (전역 락 밖에서 대기)
+            q = parse_qs(u.query)
+            room = (q.get('room') or ['global'])[0][:40]
+            since = int((q.get('since') or [0])[0] or 0)
+            wait = int((q.get('wait') or [15])[0] or 15)
+            try:
+                return self._send(chat_poll(room, since, wait))
+            except Exception as e:
+                return self._send({'ok': False, 'error': str(e)}, 500)
         if u.path == '/sw.js':   # 📴 오프라인 캐시용 서비스워커
             self.send_response(200)
             self.send_header('Content-Type', 'application/javascript; charset=utf-8')
@@ -1483,6 +1537,14 @@ class Handler(BaseHTTPRequestHandler):
             body = json.loads(self.rfile.read(n) or b'{}') if n else {}
         except Exception:
             body = {}
+        if u.path == '/chat/poll':   # ⚡ 채팅 롱폴 (전역 락 밖에서 대기)
+            try:
+                room = str(body.get('room') or 'global')[:40]
+                since = int(body.get('since') or 0)
+                wait = int(body.get('wait') or 15)
+                return self._send(chat_poll(room, since, wait))
+            except Exception as e:
+                return self._send({'ok': False, 'error': str(e)}, 500)
         try:
             self._send(api(u.path, parse_qs(u.query), body))
         except Exception as e:

@@ -164,6 +164,34 @@ STATIC_DIR = os.environ.get('RIFT_STATIC_DIR') or os.path.dirname(os.path.abspat
 CANONICAL_URL = os.environ.get('RIFT_CANONICAL') or 'https://manmulsang.kro.kr/'
 CANONICAL_TAG = ('<link rel="canonical" href="%s" />' % CANONICAL_URL).encode('utf-8')
 
+# 📴 오프라인 지원: 게임을 브라우저에 캐시해 서버가 꺼져도 접속·플레이 가능하게 하는
+#    서비스워커 코드 (파일 없이 서버가 직접 생성해서 /sw.js 로 제공)
+SW_JS = """
+const CACHE='rift-offline-v1';
+const CORE=['/','/index.html','/favicon.ico'];
+self.addEventListener('install',e=>{
+  e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE).catch(()=>{})).then(()=>self.skipWaiting()));
+});
+self.addEventListener('activate',e=>{ e.waitUntil(self.clients.claim()); });
+self.addEventListener('fetch',e=>{
+  const u=new URL(e.request.url);
+  if(e.request.method!=='GET') return;
+  // API 요청은 네트워크만 (실패 시 게임이 자체적으로 오프라인 모드 처리)
+  if(u.pathname.startsWith('/chat')||u.pathname.startsWith('/rank')||u.pathname.startsWith('/guild')
+   ||u.pathname.startsWith('/boss')||u.pathname.startsWith('/mail')||u.pathname.startsWith('/admin')
+   ||u.pathname.startsWith('/auction')||u.pathname.startsWith('/market')||u.pathname.startsWith('/purchase')
+   ||u.pathname.startsWith('/nick')||u.pathname.startsWith('/click')||u.pathname.startsWith('/ban')
+   ||u.pathname.startsWith('/online')||u.pathname.startsWith('/ping')) return;
+  // 정적 파일: 네트워크 우선, 실패하면(서버 꺼짐) 캐시로 → 오프라인 플레이
+  e.respondWith(
+    fetch(e.request).then(res=>{
+      try{ const cp=res.clone(); caches.open(CACHE).then(c=>c.put(e.request,cp)); }catch(err){}
+      return res;
+    }).catch(()=>caches.match(e.request).then(m=>m||caches.match('/index.html')))
+  );
+});
+""".encode("utf-8")
+
 _MIME = {
     '.html': 'text/html; charset=utf-8',
     '.css': 'text/css; charset=utf-8',
@@ -1430,6 +1458,15 @@ class Handler(BaseHTTPRequestHandler):
         u = urlparse(self.path)
         if not rate_ok(self.client_address[0], u.path):
             return self._send({'ok': False, 'error': 'rate_limited'}, 429)
+        if u.path == '/sw.js':   # 📴 오프라인 캐시용 서비스워커
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/javascript; charset=utf-8')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Cache-Control', 'no-cache')
+            self.send_header('Content-Length', str(len(SW_JS)))
+            self.end_headers()
+            self.wfile.write(SW_JS)
+            return
         if u.path not in API_PATHS:
             return self._serve_static(u.path)
         try:

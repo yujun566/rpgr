@@ -5481,8 +5481,9 @@ function playerATK(){
   return Math.round(a);
 }
 function playerDEF(){
-  // ⚖️ 초반 약화: 레벨 비중↓, 방어 강화 비중↑
-  let d = 1 + Math.floor(S.level*0.5) + BAL.upBonus(3, S.defLv);   // ⚖️ 너프: 강화 base 4→3
+  // ⚖️ 방어 성장 버프: 강화 base 3→5 · 레벨 비중 0.5→0.7 · 체력 스탯 1당 방어 +2
+  let d = 1 + Math.floor(S.level*0.7) + BAL.upBonus(5, S.defLv);
+  d += (S.stats.vit-10)*2;             // 💪 체력 스탯이 방어도 함께 올려줌
   const ar = eqById(S.armor); if(ar) d += eqPower(ar);
   if(S.pets.golemp) d *= 1.20;
   d *= petBonus('def');
@@ -9500,7 +9501,7 @@ function renderStats(){
   $('atkLvTxt').textContent = 'Lv.'+S.atkLv;
   $('defLvTxt').textContent = 'Lv.'+S.defLv;
   $('atkGainTxt').textContent = '현재 보너스 +'+fmt(BAL.upBonus(5,S.atkLv))+' → 다음 +'+fmt(BAL.upBonus(5,S.atkLv+1));
-  $('defGainTxt').textContent = '현재 보너스 +'+fmt(BAL.upBonus(3,S.defLv))+' → 다음 +'+fmt(BAL.upBonus(3,S.defLv+1));
+  $('defGainTxt').textContent = '현재 보너스 +'+fmt(BAL.upBonus(5,S.defLv))+' → 다음 +'+fmt(BAL.upBonus(5,S.defLv+1));
   $('upAtk').textContent = fmt(ca)+' G'; $('upAtk').disabled = S.gold < ca;
   $('upDef').textContent = fmt(cd)+' G'; $('upDef').disabled = S.gold < cd;
   const cc = BAL.upCost(20, S.critLv);

@@ -13854,6 +13854,7 @@ function renderAuto(){
 }
 setInterval(function(){ try{
   if(!ensureX2()) return;
+  if(document.hidden) return;   // 🛡️ 백그라운드 탭에서는 오토 정지 (탭 전환 버그 방지)
   if(S.x2.auto.skill && typeof currentSkills==='function'){
     const now=Date.now();
     for(const s of currentSkills()){
@@ -14263,6 +14264,7 @@ function setActiveGhost(name){
 window.summonGhost=summonGhost; window.setActiveGhost=setActiveGhost;
 setInterval(function(){ try{
   const e=x3(); if(!e||!e.activeGhost) return;
+  if(document.hidden) return;   // 🛡️ 백그라운드 탭에서는 정지
   if(typeof battleMode!=='undefined' && battleMode!=='field') return;
   if(typeof mob==='undefined'||!mob||mob.hp<=0) return;
   if(Math.random()<0.5) skillDamage(0.6,'👻 '+e.activeGhost);
@@ -15759,15 +15761,29 @@ function togSlowAuto(){
   saveGame(true); renderSlowAuto();
 }
 window.togSlowAuto=togSlowAuto;
+let _lastSlowHit=0;
 setInterval(function(){ try{
   const e=x7(); if(!e||!e.slowAuto) return;
+  if(document.hidden) return;                                        // 🛡️ 탭이 백그라운드면 정지 (탭 전환 버그 방지)
+  if(Date.now()-_lastSlowHit < 1400) return;                          // 🛡️ 복귀 직후 몰아치기 방지 (최소 간격 보장)
   if(typeof isVIP==='function' && isVIP() && S.autoBattle) return;   // VIP 오토 작동 중이면 쉼
   if(typeof battleMode!=='undefined' && battleMode!=='field') return;
   if(typeof mob==='undefined'||!mob||mob.hp<=0) return;
   if(typeof pHpCur!=='undefined' && pHpCur<=0) return;
   if(typeof mobInRange==='function' && !mobInRange()) return;
+  _lastSlowHit=Date.now();
   if(typeof heroStrike==='function') heroStrike(false,false);
 }catch(err){} }, 1500);
+// 🛡️ 탭 복귀 시 전투 타이머 리셋: 숨어있던 시간이 공격으로 몰아 터지는 것 방지
+document.addEventListener('visibilitychange', function(){
+  try{
+    if(!document.hidden){
+      if(typeof lastTick!=='undefined') lastTick=performance.now();
+      if(typeof autoAtkAcc!=='undefined') autoAtkAcc=0;
+      _lastSlowHit=Date.now();
+    }
+  }catch(e){}
+});
 function renderSlowAuto(){
   const set=document.getElementById('tab-set');
   if(!set) return;

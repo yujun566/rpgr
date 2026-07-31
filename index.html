@@ -15324,6 +15324,251 @@ const boot6=setInterval(function(){
 })();
 </script>
 
+<script>
+/* ================================================================
+   🐲 확장팩 7탄 — 실시간 레이드 시스템 (월드보스 개편)
+   - 매시 정각~10분 개방 · 게임 전투화면이 레이드 화면으로 전환
+   - 참가 유저들의 직업 도트 외형 + 이름 표시, 다같이 공격
+   - 종료 시 원래 스테이지로 자동 복귀
+   + 모바일 연타 지원 + 개발자 콘솔 승급 버튼
+   ================================================================ */
+(function(){
+'use strict';
+function E$(id){ return document.getElementById(id); }
+
+/* ---------- 📱 모바일 연타 지원 (더블탭 확대 방지 + 즉시 반응) ---------- */
+const tapCss=document.createElement('style');
+tapCss.textContent='button, #game, #raidOverlay, .tabs button{touch-action:manipulation; -webkit-tap-highlight-color:transparent;}'
++'#raidOverlay{position:fixed;z-index:800;background:linear-gradient(180deg,#12041e,#1e0a30 60%,#12041e);border:2px solid var(--rift,#a06bff);display:none;flex-direction:column;overflow:hidden;image-rendering:pixelated;}'
++'#raidOverlay .rdTop{display:flex;justify-content:space-between;align-items:center;padding:5px 8px;font-size:11px;color:var(--gold);}'
++'#raidOverlay .rdHp{height:14px;background:#2a0a14;border:1px solid var(--line);margin:0 8px;position:relative;}'
++'#raidOverlay .rdHp>div{height:100%;background:linear-gradient(90deg,#ff5470,#ff2d95);transition:width .3s;}'
++'#raidOverlay .rdHp>span{position:absolute;inset:0;text-align:center;font-size:10px;color:#fff;line-height:14px;}'
++'#raidBoss{font-size:52px;text-align:center;flex:1;display:flex;align-items:center;justify-content:center;filter:drop-shadow(0 0 12px #ff2d95);user-select:none;}'
++'#raidParts{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;padding:4px;min-height:74px;}'
++'.rdP{text-align:center;width:56px;} .rdP canvas{background:rgba(255,255,255,.04);border:1px solid var(--line);}'
++'.rdP .nm{font-size:9px;color:var(--cyan);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}'
++'.rdP.hit canvas{border-color:var(--gold);transform:translateY(-4px);} .rdP canvas{transition:transform .15s;}'
++'#raidAtk{margin:6px 10px 10px;padding:14px;font-size:16px;border:2px solid var(--gold);color:var(--gold);background:#241030;user-select:none;}'
++'#raidAtk:active{background:var(--gold);color:#000;}'
++'.rdDmg{position:absolute;color:var(--gold);font-size:13px;font-weight:bold;pointer-events:none;animation:rdUp .8s forwards;text-shadow:0 0 4px #000;}'
++'@keyframes rdUp{0%{transform:translateY(0);opacity:1}100%{transform:translateY(-50px);opacity:0}}';
+document.head.appendChild(tapCss);
+
+/* ---------- 레이드 오버레이 DOM ---------- */
+const OV=document.createElement('div'); OV.id='raidOverlay';
+OV.innerHTML=
+  '<div class="rdTop"><span id="rdTitle">🐲 차원의 포식자</span><span id="rdTimer"></span>'
+ +'<button style="font-size:10px;padding:2px 8px;" onclick="raidLeave()">나가기 ✕</button></div>'
+ +'<div class="rdHp"><div id="rdHpBar" style="width:100%"></div><span id="rdHpTxt"></span></div>'
+ +'<div id="raidBoss">🐲</div>'
+ +'<div id="raidParts"></div>'
+ +'<button id="raidAtk">⚔️ 공격! (연타 가능)</button>';
+document.body.appendChild(OV);
+
+/* ---------- 상태 ---------- */
+let raidOn=false, pendDmg=0, lastState=null, lastPartDmg={};
+function myJobId(){ try{ return curJobId(); }catch(e){ return 'shopkeeper'; } }
+
+function posOverlay(){
+  const cv=E$('game'); if(!cv) return;
+  const r=cv.getBoundingClientRect();
+  OV.style.left=r.left+'px'; OV.style.top=r.top+'px';
+  OV.style.width=r.width+'px'; OV.style.height=r.height+'px';
+}
+setInterval(function(){ if(raidOn) posOverlay(); }, 400);
+window.addEventListener('resize', posOverlay);
+
+/* ---------- 참가자 도트 렌더 (직업 스프라이트) ---------- */
+function drawJobMini(cv, jobId){
+  const spr=SPR['job_'+jobId]||SPR[(JOBS[jobId]||{}).spr]||SPR.job_shopkeeper||SPR[Object.keys(SPR)[0]];
+  const pal=PAL['job_'+jobId]||PAL[(JOBS[jobId]||{}).pal]||PAL.job_shopkeeper||{};
+  if(!spr) return;
+  const frame=spr[0], px=3;
+  cv.width=12*px; cv.height=14*px;
+  const ctx=cv.getContext('2d');
+  ctx.clearRect(0,0,cv.width,cv.height);
+  for(let y=0;y<frame.length;y++){
+    const row=frame[y];
+    for(let x=0;x<row.length;x++){
+      const ch=row[x]; if(ch==='.') continue;
+      ctx.fillStyle=pal[ch]||'#888';
+      ctx.fillRect(x*px,y*px,px,px);
+    }
+  }
+}
+function renderParts(parts){
+  const box=E$('raidParts'); if(!box) return;
+  // 내 정보를 항상 포함
+  const me={nick:(S&&S.nickname)||'나', job:myJobId(), dmg:0, me:true};
+  const all=[me].concat((parts||[]).filter(p=>p.nick!==me.nick));
+  box.innerHTML='';
+  for(const p of all.slice(0,12)){
+    const d=document.createElement('div'); d.className='rdP'; d.dataset.nick=p.nick;
+    const cv=document.createElement('canvas');
+    d.appendChild(cv);
+    const nm=document.createElement('div'); nm.className='nm';
+    nm.textContent=(p.me?'⭐':'')+p.nick;
+    d.appendChild(nm);
+    box.appendChild(d);
+    drawJobMini(cv, p.job||'shopkeeper');
+  }
+}
+function flashPart(nick, dmg){
+  const el=document.querySelector('.rdP[data-nick="'+CSS.escape(nick)+'"]');
+  if(el){
+    el.classList.add('hit');
+    setTimeout(()=>el.classList.remove('hit'), 200);
+  }
+  // 보스 위에 데미지 숫자
+  const n=document.createElement('div'); n.className='rdDmg';
+  n.textContent='-'+fmt(Math.floor(dmg));
+  n.style.left=(35+Math.random()*30)+'%';
+  n.style.top=(30+Math.random()*20)+'%';
+  OV.appendChild(n);
+  setTimeout(()=>{ try{OV.removeChild(n);}catch(e){} }, 850);
+}
+
+/* ---------- 입장/퇴장 ---------- */
+window.raidEnter=async function(){
+  if(typeof NET==='undefined'||!NET.isOnline()){ log('<span class="r">레이드는 온라인 연결이 필요합니다.</span>'); return; }
+  const st=await NET.req('/boss/state',{});
+  if(!(st&&st.ok)) return;
+  if(!st.raid||!st.raid.open){
+    const m=Math.ceil(((st.raid&&st.raid.next_in)||0)/60);
+    showModal('🐲 레이드 대기 중','레이드는 <b>매시 정각부터 10분간</b> 열립니다.<br><br>다음 개방까지: <b style="color:var(--gold)">'+m+'분</b>');
+    return;
+  }
+  raidOn=true; lastState=st; lastPartDmg={};
+  posOverlay(); OV.style.display='flex';
+  updateRaid(st);
+  log('<span class="gP">🐲 레이드 입장! 접속한 모험가들과 함께 공격하세요!</span>');
+};
+window.raidLeave=function(msg){
+  if(!raidOn) return;
+  raidOn=false; OV.style.display='none';
+  log('<span class="c">🐲 레이드 종료 — 진행 중이던 스테이지 '+(S?S.stage:'?')+'(으)로 복귀했습니다.</span>'+(msg||''));
+};
+
+/* ---------- 갱신 루프 ---------- */
+function updateRaid(st){
+  if(!st||!st.ok) return;
+  lastState=st;
+  const b=st.boss||{};
+  if(E$('rdTitle')) E$('rdTitle').textContent='🐲 '+(b.name||'차원의 포식자')+' (시즌 '+(b.season||1)+')';
+  const pct=Math.max(0,Math.min(100,(b.hp/(b.max_hp||1))*100));
+  if(E$('rdHpBar')) E$('rdHpBar').style.width=pct+'%';
+  if(E$('rdHpTxt')) E$('rdHpTxt').textContent=fmt(Math.floor(b.hp||0))+' / '+fmt(Math.floor(b.max_hp||0));
+  if(E$('rdTimer')) E$('rdTimer').textContent='⏱️ 종료까지 '+Math.floor((st.raid.close_in||0)/60)+':'+String((st.raid.close_in||0)%60).padStart(2,'0');
+  renderParts(st.participants);
+  // 다른 유저들의 공격 연출 (dmg 변화 감지)
+  for(const p of (st.participants||[])){
+    if(p.nick===(S&&S.nickname)) continue;
+    const prev=lastPartDmg[p.nick];
+    if(p.dmg>0 && p.dmg!==prev) flashPart(p.nick, p.dmg);
+    lastPartDmg[p.nick]=p.dmg;
+  }
+  if(!st.raid.open){ raidLeave(); }
+}
+setInterval(async function(){ try{
+  if(!raidOn) return;
+  const st=await NET.req('/boss/state',{});
+  updateRaid(st);
+}catch(e){} }, 2000);
+
+/* ---------- 내 공격 (연타 → 배치 전송) ---------- */
+function myRaidDmg(){
+  const a=playerATK();
+  if(!isFinite(a)) return 1000;   // 개발자 장비는 고정 피해
+  return Math.floor(a*(2+Math.random()));
+}
+function raidTap(ev){
+  if(ev){ ev.preventDefault(); }
+  if(!raidOn) return;
+  const d=myRaidDmg();
+  pendDmg+=d;
+  flashPart((S&&S.nickname)||'나', d);
+  try{ sfx&&sfx('hit'); }catch(e){}
+}
+const atkBtn=OV.querySelector('#raidAtk');
+atkBtn.addEventListener('click', raidTap);
+atkBtn.addEventListener('touchstart', raidTap, {passive:false});   // 모바일 연타: 딜레이 없이 즉시
+setInterval(async function(){ try{
+  if(!raidOn||pendDmg<=0) return;
+  const d=pendDmg; pendDmg=0;
+  const r=await NET.req('/boss/hit',{nick:(S&&S.nickname)||'익명', dmg:d, job:myJobId()});
+  if(r&&r.ok){
+    if(r.killed){
+      showModal('🎉 레이드 보스 격파!','모든 참가자의 힘으로 <b>'+((lastState&&lastState.boss&&lastState.boss.name)||'보스')+'</b>를 쓰러뜨렸습니다!<br>기여 보상이 우편으로 발송됩니다.');
+      raidLeave();
+    }
+  } else if(r&&r.error==='raid_closed'){ raidLeave(); }
+}catch(e){} }, 700);
+
+/* ---------- 기존 월드보스 GUI → 레이드로 교체 + 개방 알림 ---------- */
+if(typeof showBossGUI==='function'){ showBossGUI=function(){ raidEnter(); }; window.showBossGUI=showBossGUI; }
+// 개방 시 배너 버튼
+const banner=document.createElement('button');
+banner.id='raidBanner';
+banner.style.cssText='position:fixed;right:12px;bottom:12px;z-index:700;display:none;padding:10px 14px;border:2px solid var(--gold);color:var(--gold);background:#241030;font-size:13px;animation:pulse 1s infinite;';
+banner.textContent='🐲 레이드 개방 중! 입장하기';
+banner.onclick=function(){ raidEnter(); };
+document.body.appendChild(banner);
+let wasOpen=false;
+setInterval(async function(){ try{
+  if(typeof NET==='undefined'||!NET.isOnline()||typeof S==='undefined'||!S) return;
+  const st=await NET.req('/boss/state',{});
+  const open=!!(st&&st.ok&&st.raid&&st.raid.open);
+  banner.style.display=(open&&!raidOn)?'block':'none';
+  if(open&&!wasOpen){
+    log('<span class="gP">🐲 레이드가 개방되었습니다! (10분간) 우측 하단 버튼으로 입장하세요!</span>');
+    try{ if(typeof showToast==='function') showToast('🐲 레이드 개방!','gacha',3000); }catch(e){}
+  }
+  wasOpen=open;
+}catch(e){} }, 30000);
+
+/* ---------- 👑 개발자 콘솔 승급 버튼 ---------- */
+function injectConsoleRank(){
+  const dc=E$('devConsole');
+  if(!dc||E$('dcRankBox')) return;
+  dc.insertAdjacentHTML('beforeend',
+    '<div id="dcRankBox" style="border-top:1px dashed #ff4545;margin-top:8px;padding-top:8px;">'
+   +'<b style="color:var(--gold)">👑 스태프 승급/강등</b> <small style="color:var(--mut)">([개발자] 닉네임만 가능)</small>'
+   +'<div style="display:flex;gap:4px;margin-top:5px;align-items:center;flex-wrap:wrap;">'
+   +'<input id="dcRkT" placeholder="대상 닉" style="width:90px;background:var(--panel2);color:var(--txt);border:1px solid var(--line);padding:5px;font-size:11px;">'
+   +'<select id="dcRkR" style="background:var(--panel2);color:var(--txt);border:1px solid var(--line);padding:5px;font-size:11px;">'
+   +'<option value="1">1 신입 (밴만)</option><option value="2">2 인턴 (밴+구매승인)</option>'
+   +'<option value="3">3 만물상 감시자</option><option value="4">4 차원 감독관</option>'
+   +'<option value="5">5 균열 관리자</option><option value="6">6 부개발자 (전부)</option>'
+   +'<option value="0">0 해임</option></select>'
+   +'<button class="danger" style="font-size:11px;padding:5px 10px;" onclick="dcPromote()">⬆️ 승급 적용</button></div>'
+   +'<div style="font-size:10px;color:var(--mut);margin-top:3px;">적용 즉시 서버에 반영 · 대상에게 우편 알림 · 스태프는 닉변 불가</div></div>');
+}
+window.dcPromote=async function(){
+  if(!S||S.nickname!==ADMIN_NICK){ alert('승급은 [개발자] 닉네임을 가진 사람만 할 수 있습니다.'); return; }
+  const t=((E$('dcRkT')||{}).value||'').trim(), r=parseInt((E$('dcRkR')||{}).value)||0;
+  if(!t){ alert('대상 닉네임을 입력하세요.'); return; }
+  try{
+    const res=await NET.req('/admin/rank/set',{pass:ADMIN_PASSWORD, admin:S.nickname, target:t, rank:r});
+    if(res&&res.ok) log('<span class="gDEV">👑 ['+esc(t)+'] → ['+res.rank_name+'] 승급 완료!</span>');
+    else alert('실패: '+((res&&(res.msg||res.error))||'오류'));
+  }catch(e){ alert('네트워크 오류'); }
+};
+setInterval(function(){ try{
+  if(typeof S!=='undefined'&&S&&S.nickname===ADMIN_NICK) injectConsoleRank();
+}catch(e){} }, 2000);
+
+const boot7=setInterval(function(){
+  try{
+    if(typeof S!=='undefined'&&S){
+      clearInterval(boot7);
+      log('<span class="p">🐲 확장팩 7탄 로드! 매시 정각 실시간 레이드 + 모바일 연타 지원!</span>');
+    }
+  }catch(e){}
+}, 1100);
+})();
+</script>
+
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79"}' crossorigin="anonymous"></script>
 </body>

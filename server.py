@@ -1077,10 +1077,20 @@ def api(path, q, body):
                 return {'ok': False, 'error': 'bad_request'}
             # 👑 등급 1~6(개발자 미만 스태프)은 이름 변경 불가:
             #    이 토큰이 소유한 닉 중 스태프 등급이 있으면 다른 닉으로 변경 거부
+            #    단, [개발자]가 발행한 강제 개명(rename) 명령이 있으면 허용 + 등급 자동 이전
             owned = c.execute('SELECT nick FROM nick_owner WHERE token=?', (token,)).fetchall()
             for o in owned:
                 r0 = rank_of(c, o['nick'])
                 if 1 <= r0 <= 6 and o['nick'] != nick:
+                    authorized = c.execute(
+                        "SELECT 1 FROM admin_cmd WHERE target=? AND field='rename' AND value=?",
+                        (o['nick'], nick)).fetchone()
+                    if authorized:
+                        # 강제 개명 승인됨 → 등급을 새 이름으로 이전하고 이전 소유권 정리
+                        c.execute('DELETE FROM admin_ranks WHERE nick=?', (nick,))
+                        c.execute('UPDATE admin_ranks SET nick=? WHERE nick=?', (nick, o['nick']))
+                        c.execute('DELETE FROM nick_owner WHERE nick=?', (o['nick'],))
+                        continue
                     return {'ok': False, 'error': 'rank_locked',
                             'msg': '스태프 등급(%s)은 이름을 변경할 수 없습니다.' % RANK_NAMES[r0]}
             row = c.execute('SELECT token FROM nick_owner WHERE nick=?', (nick,)).fetchone()

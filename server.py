@@ -432,6 +432,41 @@ def rank_of(c, nick):
     row = c.execute('SELECT rank FROM admin_ranks WHERE nick=?', (nick,)).fetchone()
     return int(row['rank']) if row else 0
 
+# ============================================================================
+# 🐲 레이드 시스템 (기존 월드보스를 시간제 레이드로 개편)
+#   - 매시 정각부터 10분간 개방 (예: 13:00~13:10, 14:00~14:10 ...)
+#   - 참가자(닉네임+직업)를 추적해 모두에게 보여줌 → 함께 공격하는 화면 구성
+# ============================================================================
+RAID_OPEN_SEC = 600          # 매시 개방 시간(초) = 10분
+_raid_part = {}              # nick -> {'job':, 'ts':, 'dmg':}
+_raid_lock = threading.Lock()
+
+def raid_window():
+    t = now() % 3600
+    if t < RAID_OPEN_SEC:
+        return {'open': True, 'close_in': RAID_OPEN_SEC - t, 'next_in': 0}
+    return {'open': False, 'close_in': 0, 'next_in': 3600 - t}
+
+def raid_touch(nick, job, dmg):
+    with _raid_lock:
+        e = _raid_part.get(nick) or {'job': job, 'ts': 0, 'dmg': 0}
+        e['job'] = job or e.get('job') or 'shopkeeper'
+        e['ts'] = now(); e['dmg'] = dmg
+        _raid_part[nick] = e
+        # 90초 이상 조용한 참가자 정리
+        cut = now() - 90
+        for k in [k for k, v in _raid_part.items() if v['ts'] < cut]:
+            _raid_part.pop(k, None)
+
+def raid_participants():
+    with _raid_lock:
+        cut = now() - 90
+        out = [{'nick': k, 'job': v['job'], 'dmg': v['dmg'], 'ts': v['ts']}
+               for k, v in _raid_part.items() if v['ts'] >= cut]
+    out.sort(key=lambda x: -x['ts'])
+    return out[:12]
+
+
 def cmd_min_rank(field):
     """admin_cmd 필드별 필요 최소 등급"""
     return {'gold': 3, 'stat': 4, 'stage': 4, 'level': 4,
@@ -803,11 +838,17 @@ def api(path, q, body):
             b = dict(c.execute('SELECT * FROM worldboss WHERE id=1').fetchone())
             top = c.execute('SELECT nick,dmg FROM boss_damage WHERE season=? '
                             'ORDER BY dmg DESC LIMIT 10', (b['season'],)).fetchall()
-            return {'ok': True, 'boss': b, 'top': [dict(r) for r in top]}
+            rw = raid_window()
+            return {'ok': True, 'boss': b, 'top': [dict(r) for r in top],
+                    'raid': rw, 'participants': raid_participants() if rw['open'] else []}
 
         if path == '/boss/hit':
+            rw = raid_window()
+            if not rw['open']:
+                return {'ok': False, 'error': 'raid_closed', 'next_in': rw['next_in']}
             nick = (body.get('nick') or '익명')[:20]
             dmg = max(0.0, float(body.get('dmg') or 0))
+            raid_touch(nick, str(body.get('job') or '')[:24], dmg)
             b = c.execute('SELECT * FROM worldboss WHERE id=1').fetchone()
             hp = max(0.0, b['hp'] - dmg)
             season = b['season']

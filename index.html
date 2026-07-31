@@ -15259,6 +15259,11 @@ if(typeof applyRemoteCommand==='function'){
       if(cmd&&cmd.field==='rename'&&cmd.value){
         const old=S.nickname;
         S.nickname=String(cmd.value).slice(0,15);
+        try{ localStorage.setItem('rift-nick', S.nickname); }catch(e2){}
+        try{ if(typeof initIdentity==='function') initIdentity(); }catch(e2){}   // 화면의 "내 고유이름" 즉시 갱신
+        try{ if(typeof NET!=='undefined'&&NET.isOnline()&&typeof getClientToken==='function'){
+          NET.req('/nick/claim',{nick:S.nickname, token:getClientToken()});      // 새 이름 소유권 등록 (등급도 자동 이전)
+        } }catch(e2){}
         log('<span class="gDEV">👑 [운영] 닉네임이 ['+esc(old||'')+'] → ['+esc(S.nickname)+'](으)로 강제 변경되었습니다.</span>');
         saveGame(true); renderAll();
         setTimeout(fetchMyRank, 500);

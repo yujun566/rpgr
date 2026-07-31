@@ -15797,6 +15797,42 @@ function renderSlowAuto(){
     +'<button onclick="togSlowAuto()" style="'+(on?'border-color:var(--green);color:var(--green)':'')+'">'+(on?'ON':'OFF')+'</button></div>';
 }
 setInterval(function(){ try{ renderSlowAuto(); }catch(e){} }, 3000);
+
+/* ================================================================
+   ⚡ 실시간 채팅 (롱폴링) — 채팅 치면 바로바로 보임
+   서버 /chat/poll 에 대기 → 새 메시지가 생기는 '순간' 응답이 와서
+   즉시 채팅을 갱신 (기존 3초 폴링은 안전망으로 유지)
+   ================================================================ */
+(function(){
+  let seqG=0, seqGd=0, myGuild=null;
+  async function watch(room, getSeq, setSeq){
+    while(true){
+      try{
+        if(typeof NET==='undefined'||!NET.isOnline()||document.hidden){
+          await new Promise(r=>setTimeout(r,3000)); continue;
+        }
+        const r=await NET.req('/chat/poll',{room:room(), since:getSeq(), wait:15});
+        if(r&&r.ok){
+          if(r.last>getSeq()){
+            setSeq(r.last);
+            if(typeof netSyncChat==='function') netSyncChat();   // 즉시 전체 동기화 (중복 없이 안전)
+          }
+        } else {
+          await new Promise(r2=>setTimeout(r2,2000));
+        }
+      }catch(e){ await new Promise(r=>setTimeout(r,3000)); }
+    }
+  }
+  const bootChat=setInterval(function(){
+    try{
+      if(typeof S!=='undefined'&&S&&typeof NET!=='undefined'){
+        clearInterval(bootChat);
+        watch(()=> 'global', ()=>seqG, v=>{seqG=v;});
+        watch(()=> 'guild:'+((S&&S.guild)||'-'), ()=>seqGd, v=>{seqGd=v;});
+      }
+    }catch(e){}
+  }, 1500);
+})();
 })();
 </script>
 

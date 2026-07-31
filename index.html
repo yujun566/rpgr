@@ -15339,23 +15339,23 @@ function E$(id){ return document.getElementById(id); }
 /* ---------- 📱 모바일 연타 지원 (더블탭 확대 방지 + 즉시 반응) ---------- */
 const tapCss=document.createElement('style');
 tapCss.textContent='button, #game, #raidOverlay, .tabs button{touch-action:manipulation; -webkit-tap-highlight-color:transparent;}'
-+'#raidOverlay{position:fixed;z-index:800;background:linear-gradient(180deg,#12041e,#1e0a30 60%,#12041e);border:2px solid var(--rift,#a06bff);display:none;flex-direction:column;overflow:hidden;image-rendering:pixelated;}'
++'#raidOverlay{position:relative;background:linear-gradient(180deg,#12041e,#1e0a30 60%,#12041e);border:2px solid var(--rift,#a06bff);display:none;flex-direction:column;overflow:hidden;image-rendering:pixelated;width:100%;min-height:290px;}'
 +'#raidOverlay .rdTop{display:flex;justify-content:space-between;align-items:center;padding:5px 8px;font-size:11px;color:var(--gold);}'
 +'#raidOverlay .rdHp{height:14px;background:#2a0a14;border:1px solid var(--line);margin:0 8px;position:relative;}'
 +'#raidOverlay .rdHp>div{height:100%;background:linear-gradient(90deg,#ff5470,#ff2d95);transition:width .3s;}'
 +'#raidOverlay .rdHp>span{position:absolute;inset:0;text-align:center;font-size:10px;color:#fff;line-height:14px;}'
-+'#raidBoss{font-size:52px;text-align:center;flex:1;display:flex;align-items:center;justify-content:center;filter:drop-shadow(0 0 12px #ff2d95);user-select:none;}'
++'#raidBoss{font-size:52px;text-align:center;flex:1;display:flex;align-items:center;justify-content:center;filter:drop-shadow(0 0 12px #ff2d95);user-select:none;min-height:70px;}'
 +'#raidParts{display:flex;gap:6px;justify-content:center;flex-wrap:wrap;padding:4px;min-height:74px;}'
 +'.rdP{text-align:center;width:56px;} .rdP canvas{background:rgba(255,255,255,.04);border:1px solid var(--line);}'
 +'.rdP .nm{font-size:9px;color:var(--cyan);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}'
 +'.rdP.hit canvas{border-color:var(--gold);transform:translateY(-4px);} .rdP canvas{transition:transform .15s;}'
-+'#raidAtk{margin:6px 10px 10px;padding:14px;font-size:16px;border:2px solid var(--gold);color:var(--gold);background:#241030;user-select:none;}'
++'#raidAtk{margin:6px 10px 10px;padding:14px;font-size:16px;border:2px solid var(--gold);color:var(--gold);background:#241030;user-select:none;cursor:pointer;position:relative;z-index:5;}'
 +'#raidAtk:active{background:var(--gold);color:#000;}'
-+'.rdDmg{position:absolute;color:var(--gold);font-size:13px;font-weight:bold;pointer-events:none;animation:rdUp .8s forwards;text-shadow:0 0 4px #000;}'
++'.rdDmg{position:absolute;color:var(--gold);font-size:13px;font-weight:bold;pointer-events:none;animation:rdUp .8s forwards;text-shadow:0 0 4px #000;z-index:4;}'
 +'@keyframes rdUp{0%{transform:translateY(0);opacity:1}100%{transform:translateY(-50px);opacity:0}}';
 document.head.appendChild(tapCss);
 
-/* ---------- 레이드 오버레이 DOM ---------- */
+/* ---------- 레이드 화면 DOM (게임 캔버스와 "교체"됨) ---------- */
 const OV=document.createElement('div'); OV.id='raidOverlay';
 OV.innerHTML=
   '<div class="rdTop"><span id="rdTitle">🐲 차원의 포식자</span><span id="rdTimer"></span>'
@@ -15363,21 +15363,29 @@ OV.innerHTML=
  +'<div class="rdHp"><div id="rdHpBar" style="width:100%"></div><span id="rdHpTxt"></span></div>'
  +'<div id="raidBoss">🐲</div>'
  +'<div id="raidParts"></div>'
- +'<button id="raidAtk">⚔️ 공격! (연타 가능)</button>';
-document.body.appendChild(OV);
+ +'<button id="raidAtk" onclick="raidTap()">⚔️ 공격! (연타 가능)</button>';
 
 /* ---------- 상태 ---------- */
 let raidOn=false, pendDmg=0, lastState=null, lastPartDmg={};
 function myJobId(){ try{ return curJobId(); }catch(e){ return 'shopkeeper'; } }
 
-function posOverlay(){
-  const cv=E$('game'); if(!cv) return;
+// 🔄 화면 교체: 캔버스를 숨기고 같은 자리에 레이드 화면 삽입
+function swapToRaid(){
+  const cv=E$('game'); if(!cv) return false;
+  if(OV.parentNode!==cv.parentNode){
+    cv.parentNode.insertBefore(OV, cv.nextSibling);   // 캔버스 바로 뒤(같은 자리)
+  }
   const r=cv.getBoundingClientRect();
-  OV.style.left=r.left+'px'; OV.style.top=r.top+'px';
-  OV.style.width=r.width+'px'; OV.style.height=r.height+'px';
+  OV.style.minHeight=Math.max(240, r.height)+'px';
+  cv.style.display='none';                            // 전투 화면 숨김 = 교체
+  OV.style.display='flex';
+  return true;
 }
-setInterval(function(){ if(raidOn) posOverlay(); }, 400);
-window.addEventListener('resize', posOverlay);
+function swapToField(){
+  const cv=E$('game');
+  OV.style.display='none';
+  if(cv) cv.style.display='';                         // 원래 스테이지 화면 복귀
+}
 
 /* ---------- 참가자 도트 렌더 (직업 스프라이트) ---------- */
 function drawJobMini(cv, jobId){
@@ -15429,7 +15437,7 @@ function flashPart(nick, dmg){
   setTimeout(()=>{ try{OV.removeChild(n);}catch(e){} }, 850);
 }
 
-/* ---------- 입장/퇴장 ---------- */
+/* ---------- 입장/퇴장 (화면 교체) ---------- */
 window.raidEnter=async function(){
   if(typeof NET==='undefined'||!NET.isOnline()){ log('<span class="r">레이드는 온라인 연결이 필요합니다.</span>'); return; }
   const st=await NET.req('/boss/state',{});
@@ -15439,14 +15447,15 @@ window.raidEnter=async function(){
     showModal('🐲 레이드 대기 중','레이드는 <b>매시 정각부터 10분간</b> 열립니다.<br><br>다음 개방까지: <b style="color:var(--gold)">'+m+'분</b>');
     return;
   }
-  raidOn=true; lastState=st; lastPartDmg={};
-  posOverlay(); OV.style.display='flex';
+  if(!swapToRaid()) return;
+  raidOn=true; lastState=st; lastPartDmg={}; pendDmg=0;
   updateRaid(st);
-  log('<span class="gP">🐲 레이드 입장! 접속한 모험가들과 함께 공격하세요!</span>');
+  log('<span class="gP">🐲 레이드 입장! 전투 화면이 레이드로 전환되었습니다. 함께 공격하세요!</span>');
 };
 window.raidLeave=function(msg){
-  if(!raidOn) return;
-  raidOn=false; OV.style.display='none';
+  if(!raidOn && OV.style.display==='none') return;
+  raidOn=false;
+  swapToField();
   log('<span class="c">🐲 레이드 종료 — 진행 중이던 스테이지 '+(S?S.stage:'?')+'(으)로 복귀했습니다.</span>'+(msg||''));
 };
 
@@ -15482,17 +15491,26 @@ function myRaidDmg(){
   if(!isFinite(a)) return 1000;   // 개발자 장비는 고정 피해
   return Math.floor(a*(2+Math.random()));
 }
-function raidTap(ev){
-  if(ev){ ev.preventDefault(); }
+window.raidTap=function(ev){
+  if(ev&&ev.preventDefault) ev.preventDefault();
+  if(ev&&ev.stopPropagation) ev.stopPropagation();
   if(!raidOn) return;
   const d=myRaidDmg();
   pendDmg+=d;
   flashPart((S&&S.nickname)||'나', d);
   try{ sfx&&sfx('hit'); }catch(e){}
-}
+};
+// onclick 속성(HTML) + pointerdown(모바일/PC 공용, 가장 빠른 반응) 이중 연결
 const atkBtn=OV.querySelector('#raidAtk');
-atkBtn.addEventListener('click', raidTap);
-atkBtn.addEventListener('touchstart', raidTap, {passive:false});   // 모바일 연타: 딜레이 없이 즉시
+atkBtn.addEventListener('pointerdown', function(ev){
+  ev.preventDefault();               // pointerdown에서 처리 → 이어지는 click은 무시
+  atkBtn.dataset.pd='1';
+  window.raidTap(null);
+});
+atkBtn.addEventListener('click', function(ev){
+  if(atkBtn.dataset.pd){ delete atkBtn.dataset.pd; return; }   // pointerdown이 이미 처리함
+  window.raidTap(ev);
+});
 setInterval(async function(){ try{
   if(!raidOn||pendDmg<=0) return;
   const d=pendDmg; pendDmg=0;

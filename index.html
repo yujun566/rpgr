@@ -14657,6 +14657,8 @@ function bulkUp(kind){
 window.buyBless=buyBless; window.bulkUp=bulkUp;
 function renderX4up(){
   if(!E$('x4UpBox')) return;
+  // 🛡️ 입력 중 보호: 이 박스 안에 커서(포커스)가 있으면 다시 그리지 않음 (타이핑 날아감 방지)
+  try{ const _ae=document.activeElement; if(_ae && E$('x4UpBox').contains(_ae) && /INPUT|TEXTAREA|SELECT/.test(_ae.tagName)) return; }catch(e){}
   const e=x4();
   E$('x4UpBox').innerHTML =
     '<div class="row"><div class="info">🍀 강화 축복권 <b style="color:var(--gold)">'+e.bless+'장</b><small>강화 성공 시 30% 확률로 무료 1회 추가</small></div><button class="gold-btn" onclick="buyBless()">10장 구매</button></div>'
@@ -14694,6 +14696,8 @@ function bestOf(type){
 }
 function renderX4eq(){
   if(!E$('x4EqBox')) return;
+  // 🛡️ 입력 중 보호: 이 박스 안에 커서(포커스)가 있으면 다시 그리지 않음 (타이핑 날아감 방지)
+  try{ const _ae=document.activeElement; if(_ae && E$('x4EqBox').contains(_ae) && /INPUT|TEXTAREA|SELECT/.test(_ae.tagName)) return; }catch(e){}
   const opts=GRADES.map((g,i)=>'<option value="'+i+'"'+(i===1?' selected':'')+'>'+g+' 이하</option>').join('');
   const cmp=(type,label)=>{
     const cur=(S.equips||[]).find(x=>x.id===(type==='weapon'?S.weapon:S.armor));
@@ -14810,6 +14814,8 @@ function bankWithdraw(){
 window.buyDeal=buyDeal; window.bankDeposit=bankDeposit; window.bankWithdraw=bankWithdraw;
 function renderX4shop(){
   if(!E$('x4ShopBox')) return;
+  // 🛡️ 입력 중 보호: 이 박스 안에 커서(포커스)가 있으면 다시 그리지 않음 (타이핑 날아감 방지)
+  try{ const _ae=document.activeElement; if(_ae && E$('x4ShopBox').contains(_ae) && /INPUT|TEXTAREA|SELECT/.test(_ae.tagName)) return; }catch(e){}
   const e=x4(); const d=todaysDeal();
   const price=Math.floor(BAL.goldDrop(S.stage)*d.k*0.5), orig=price*2;
   const bought=e.deal.date===todayStr()&&e.deal.bought;
@@ -14990,6 +14996,8 @@ async function sendGift(n){
 window.addFriend=addFriend; window.delFriend=delFriend; window.sendGift=sendGift;
 function renderX4social(){
   if(!E$('x4SocBox')) return;
+  // 🛡️ 입력 중 보호: 이 박스 안에 커서(포커스)가 있으면 다시 그리지 않음 (타이핑 날아감 방지)
+  try{ const _ae=document.activeElement; if(_ae && E$('x4SocBox').contains(_ae) && /INPUT|TEXTAREA|SELECT/.test(_ae.tagName)) return; }catch(e){}
   const e=x4();
   const sent=e.gift.date===todayStr()&&e.gift.sent;
   E$('x4SocBox').innerHTML =
@@ -15294,6 +15302,7 @@ async function forceRename(){
 window.rankSet=rankSet; window.forceRename=forceRename;
 function renderRankUI(){
   const set=E$('tab-set'); if(!set) return;
+  try{ const _ae=document.activeElement; const _bx=E$('x6RankBox'); if(_bx && _ae && _bx.contains(_ae) && /INPUT|TEXTAREA|SELECT/.test(_ae.tagName)) return; }catch(e){}
   if(myRank<1){ const b=E$('x6RankBox'); if(b) b.style.display='none'; return; }
   if(!E$('x6RankBox')){
     set.insertAdjacentHTML('beforeend','<h2 style="margin-top:12px;">👑 운영 등급 <span id="x6MyRank" style="color:var(--gold);font-size:12px;"></span></h2><div id="x6RankBox"></div>');
@@ -15317,11 +15326,18 @@ function renderRankUI(){
 }
 setInterval(function(){ try{ renderRankUI(); }catch(e){} }, 3000);
 setInterval(function(){ try{ if(typeof S!=='undefined'&&S) fetchMyRank(); }catch(e){} }, 30000);
+// 🔁 콘솔 버튼 상시 재검사: 새로고침 후 닉네임/등급이 늦게 로드돼도 버튼이 반드시 나타나게
+setInterval(function(){ try{
+  if(typeof updateDevConsoleButton==='function') updateDevConsoleButton();
+}catch(e){} }, 2000);
 const boot6=setInterval(function(){
   try{
     if(typeof S!=='undefined'&&S){
       clearInterval(boot6);
-      fetchMyRank().then(function(){ renderRankUI(); });
+      fetchMyRank().then(function(){
+        renderRankUI();
+        try{ if(typeof updateDevConsoleButton==='function') updateDevConsoleButton(); }catch(e){}
+      });
       log('<span class="p">🛡️ 확장팩 6탄 로드! 문의하기·보안·운영 등급 시스템 활성화</span>');
     }
   }catch(e){}

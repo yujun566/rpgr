@@ -1173,6 +1173,7 @@ input, textarea, [contenteditable], [style*="user-select:all"], [style*="user-se
         <button class="buy" style="flex:1;font-size:11px" onclick="toggleBGM()">🎵 배경음 켜기/끄기</button>
         <button class="buy" style="flex:1;font-size:11px" onclick="sfx('legend')">🔔 소리 테스트</button>
         <button class="buy" style="flex:1;font-size:11px;border-color:var(--gold);color:var(--gold)" onclick="openContact()">📮 문의하기</button>
+        <button class="buy" style="flex:1;font-size:11px;border-color:var(--rift);color:var(--rift)" onclick="openCoupon()">🎁 코드 입력</button>
         <button class="buy" style="flex:1;font-size:11px" onclick="replayIntro()">🎬 인트로 다시보기</button>
       </div>
     </div>
@@ -15681,6 +15682,105 @@ const boot8=setInterval(function(){
     }
   }catch(e){}
 }, 1200);
+})();
+</script>
+
+<script>
+/* ================================================================
+   🎁 확장팩 9탄 — 쿠폰 코드 시스템
+   설정 탭 [🎁 코드 입력] → GUI에 코드 입력 → 코드별 정해진 보상 지급
+   각 코드는 계정당 1회만 사용 가능 (S.x7.codes에 기록)
+   ================================================================ */
+(function(){
+'use strict';
+function x7(){ if(typeof S==='undefined'||!S) return null; if(!S.x7) S.x7={}; if(!S.x7.codes) S.x7.codes={}; return S.x7; }
+
+/* ---- 코드 목록 (코드마다 보상이 다름) — 새 코드는 여기에 추가 ---- */
+const COUPONS = {
+  'MANMULSANG': { name:'만물상 개업 기념',  give(){ const g=Math.floor(BAL.goldDrop(S.stage)*50*goldMult()); S.gold+=g; recGold(g); return '골드 +'+fmt(g); } },
+  'RIFT2026':   { name:'균열 관측 기념',    give(){ S.shards=(S.shards||0)+30; return '균열의 조각 +30'; } },
+  'WELCOME':    { name:'신규 환영',         give(){ S.stones=(S.stones||0)+50; const g=Math.floor(BAL.goldDrop(S.stage)*20); S.gold+=g; recGold(g); return '강화석 +50 · 골드 +'+fmt(g); } },
+  'DOTGAME':    { name:'도트 사랑',         give(){ if(S.x2&&S.x2.runes){ for(let i=0;i<5;i++){ const t=['atk','def','crit','gold','hp'][Math.floor(Math.random()*5)]; S.x2.runes[t]=(S.x2.runes[t]||0)+1; } return '랜덤 룬 +5'; } S.shards=(S.shards||0)+15; return '조각 +15'; } },
+  'LEGEND777':  { name:'전설의 행운',       give(){
+      const w=makeGachaWeapon(true,false); w.grade='Legendary';
+      const invCap=S.invCap||30;
+      if(S.equips.length<invCap){ S.equips.push(w); try{collAdd(w.name);}catch(e){} return '전설 무기 ['+w.name+'] 획득!'; }
+      const g=Math.floor(w.base*2); S.gold+=g; recGold(g); return '인벤 가득 → 골드 +'+fmt(g); } },
+  'COINLOVE':   { name:'코인 후원',         give(){ S.coins=(S.coins||0)+100; return '💎 코인 +100'; } },
+  'GHOSTPET':   { name:'수호령 소환',       give(){ try{ if(window.__x3GhostCapture){ window.__x3GhostCapture('코드의 수호령'); return '👻 특별 유령 [코드의 수호령] 획득!'; } }catch(e){} S.shards=(S.shards||0)+20; return '조각 +20'; } },
+  'THANKYOU':   { name:'감사 이벤트',       give(){ S.potionUntil=Math.max(S.potionUntil||0,Date.now())+60*60000; S.shards=(S.shards||0)+10; return '공격 물약 60분 + 조각 +10'; } },
+};
+
+window.openCoupon = function(){
+  showModal('🎁 쿠폰 코드 입력',
+    '<div style="text-align:left;font-size:12px;">이벤트/공지로 배포된 코드를 입력하세요.<br><span style="color:var(--mut);font-size:11px;">· 코드마다 보상이 다르며, 각 코드는 1회만 사용할 수 있습니다.</span></div>'
+   +'<input id="couponIn" maxlength="20" placeholder="코드 입력 (영문/숫자)" '
+   +'style="width:100%;margin-top:8px;background:var(--panel2);color:var(--gold);border:1px solid var(--gold);padding:8px;font-size:14px;text-align:center;letter-spacing:2px;text-transform:uppercase;font-family:inherit;">'
+   +'<button class="gold-btn" style="width:100%;margin-top:8px;padding:8px;" onclick="redeemCoupon()">🎉 보상 받기</button>');
+  setTimeout(function(){ const i=document.getElementById('couponIn'); if(i) i.focus(); }, 100);
+};
+window.redeemCoupon = function(){
+  const e=x7(); if(!e) return;
+  const el=document.getElementById('couponIn');
+  const code=((el&&el.value)||'').trim().toUpperCase().replace(/\s/g,'');
+  if(!code){ alert('코드를 입력해주세요.'); return; }
+  const c=COUPONS[code];
+  if(!c){ alert('존재하지 않는 코드입니다. 대소문자/오타를 확인해주세요!'); try{sfx&&sfx('fail');}catch(err){} return; }
+  if(e.codes[code]){ alert('이미 사용한 코드입니다.'); return; }
+  let reward='';
+  try{ reward=c.give(); }catch(err){ alert('보상 지급 중 오류가 발생했습니다.'); return; }
+  e.codes[code]=Date.now();
+  log('<span class="gP">🎁 쿠폰 ['+code+'] 사용! ('+c.name+') → '+reward+'</span>');
+  try{ if(typeof showToast==='function') showToast('🎁 쿠폰 보상!<br><span style="font-size:11px">'+reward+'</span>','gacha',3500); }catch(err){}
+  try{ sfx&&sfx('legend'); }catch(err){}
+  try{ if(typeof closeModal==='function') closeModal(); }catch(err){}
+  saveGame(true); renderAll();
+};
+
+const boot9=setInterval(function(){
+  try{
+    if(typeof S!=='undefined'&&S){
+      clearInterval(boot9);
+      x7();
+      log('<span class="p">🎁 확장팩 9탄 로드! 쿠폰 코드 + 🐢 무료 느린 자동전투 추가!</span>');
+    }
+  }catch(e){}
+}, 1300);
+
+/* ================================================================
+   🐢 무료 느린 자동전투 (게임 내 · 모든 유저)
+   - VIP 자동전투(0.25초/타)와 별개로, 누구나 켤 수 있는 1.5초/타 자동 공격
+   - VIP 자동전투가 켜져 있으면 중복 방지를 위해 느린 오토는 쉼
+   ================================================================ */
+function togSlowAuto(){
+  const e=x7(); if(!e) return;
+  e.slowAuto=!e.slowAuto;
+  log('<span class="c">🐢 느린 자동 전투 '+(e.slowAuto?'ON (1.5초마다 1회 공격)':'OFF')+'</span>');
+  saveGame(true); renderSlowAuto();
+}
+window.togSlowAuto=togSlowAuto;
+setInterval(function(){ try{
+  const e=x7(); if(!e||!e.slowAuto) return;
+  if(typeof isVIP==='function' && isVIP() && S.autoBattle) return;   // VIP 오토 작동 중이면 쉼
+  if(typeof battleMode!=='undefined' && battleMode!=='field') return;
+  if(typeof mob==='undefined'||!mob||mob.hp<=0) return;
+  if(typeof pHpCur!=='undefined' && pHpCur<=0) return;
+  if(typeof mobInRange==='function' && !mobInRange()) return;
+  if(typeof heroStrike==='function') heroStrike(false,false);
+}catch(err){} }, 1500);
+function renderSlowAuto(){
+  const set=document.getElementById('tab-set');
+  if(!set) return;
+  let box=document.getElementById('x7SlowBox');
+  if(!box){
+    set.insertAdjacentHTML('beforeend','<h2 style="margin-top:12px;">🐢 무료 자동 전투</h2><div id="x7SlowBox"></div>');
+    box=document.getElementById('x7SlowBox');
+  }
+  const e=x7(); const on=e&&e.slowAuto;
+  box.innerHTML='<div class="row"><div class="info">느린 자동 공격 (무료·모든 유저)<small>1.5초마다 1회 자동 공격 · VIP 자동전투(0.25초)보다 느린 보급형 · 환생해도 유지</small></div>'
+    +'<button onclick="togSlowAuto()" style="'+(on?'border-color:var(--green);color:var(--green)':'')+'">'+(on?'ON':'OFF')+'</button></div>';
+}
+setInterval(function(){ try{ renderSlowAuto(); }catch(e){} }, 3000);
 })();
 </script>
 

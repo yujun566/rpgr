@@ -5,6 +5,7 @@
   <meta name="google-site-verification" content="-JD1G3OVqw3sHXn5g4JncDQmDxF3xz8ttfvq4bpfAm8" />
   <meta name="google-site-verification" content="h4lUOCK9uzaSBCtHsjBi_AFfCF8rLfZZa6301712WQ0" />
   <meta charset="UTF-8">
+  <link rel="canonical" href="https://manmulsang.kro.kr/" />
   <title>만물상 RPG - 웹 온라인 게임</title>
   <meta name="description" content="웹에서 바로 즐기는 만물상 RPG 게임입니다.">
   <meta name="keywords" content="만물상RPG, 웹게임, RPG, 온라인게임">
@@ -688,6 +689,7 @@ input, textarea, [contenteditable], [style*="user-select:all"], [style*="user-se
     <span>골드 <b id="goldTxt">0</b></span>
     <span>스탯PT <b id="statPtTxt" style="color:var(--green)">0</b></span>
     <span class="shard">균열의 조각 <b id="shardTxt" style="color:var(--rift)">0</b></span>
+    <span>💎 코인 <b id="coinTxt" style="color:var(--gold)">0</b></span>
     <span>전투력 <b id="powerDisplay" style="color:var(--gold)">0</b></span>
     <span id="cloudAuthBox" style="display:flex; align-items:center; gap:6px;">
       <button id="loginBtn" class="gold-btn" style="font-size:11px; padding:5px 9px;" onclick="cloudLogin()">🔑 구글 로그인</button>
@@ -1170,6 +1172,7 @@ input, textarea, [contenteditable], [style*="user-select:all"], [style*="user-se
       <div style="display:flex;gap:6px;margin-top:8px">
         <button class="buy" style="flex:1;font-size:11px" onclick="toggleBGM()">🎵 배경음 켜기/끄기</button>
         <button class="buy" style="flex:1;font-size:11px" onclick="sfx('legend')">🔔 소리 테스트</button>
+        <button class="buy" style="flex:1;font-size:11px;border-color:var(--gold);color:var(--gold)" onclick="openContact()">📮 문의하기</button>
         <button class="buy" style="flex:1;font-size:11px" onclick="replayIntro()">🎬 인트로 다시보기</button>
       </div>
     </div>
@@ -5543,7 +5546,103 @@ let memSave = null;
 
 /* ---------- 고유이름 / 관리자 계정 ---------- */
 const ADMIN_NICK = '개발자';
-const ADMIN_PASSWORD = 'adadawdsajdiqahdxahudguxajhdhasgdxhagdahzgdahgrhagert324513461741241247162415462712471264521561756607906jasbfuhsabfuhsgbauhabf';  // 이 비밀번호를 아는 사람만 "개발자" 닉네임을 쓸 수 있음
+const ADMIN_PASSWORD = [
+  'UFbNb2ETVESlhB7A7VdpYIdryMbHMstrJG3Z3XwmclmjNioU',
+  '51yNPRCne7KbhYSlku5Cdg2yfwYFyK1a8sD3MbUTypx7buIT',
+  'XSazN2hQqKO4C6pncQe31pvBChNzBYC1Lb4HR9FXC6z2OB3T',
+  'b2uEXGkR1UuoXKgPgD6oDFUYk1a4MXde4eWWGFh9IYChnRO3',
+  'E6R4XGOCN1JZ7g5XJVfluiPCcG08p1ZhJeTgLDea5PwlWrj7',
+  'AQBqzGWtTu9XHyKeUSxwBWrWwMUTm84m0BHOfl56CzvFuUc1',
+  'WtiOX3NxKCNJ5gRddwwZoNTNFQGV5vMSUVSpnr2S6waQxWfj',
+  'DActqcJZPs9nmiNEARD1FmNEutoyOKzgz9mgYEs4pLIBgpZH',
+  'ZaHnqhnLZPVMXr4YS4gJv5lyCbPf3OLUQKkiRZaINT517DLQ',
+  '7l99QJN5iykcE5QxUe2F2i0buTczc56MlKHDRapWyT25w1Z1',
+  'ZcUrLa5XxdjQHoi5EtA26Kl0dTNFM6seeFTQACmAhTp381AO',
+  'EEUhjDFa9XHnQg3wKjxnyF2Jc9joSOOp8laUCSKrqe5gjuEm',
+  'PP0frKMJXF3Eq39nxrqaaAnCZXQwyXQOFK6sUV1E8SFzqjeM',
+  '0ED5WyKSrtgGUaTzdlzhAsnXoEBx9DdbxWuNS4mCgVM9Kydo',
+  'hoN6J8lAGWV7Rn0E555gub5CO5vTvbnYlHybjZN1IToBRvu9',
+  'lzP93nmGO8OVRCLUl6GA5PbUkS9mKxGl0GwtjcfRC0q1bEog',
+  'UsRgguaIj0v5apIT8gOituyNBmocaM0LZm8rtMBzD0E7L5T6',
+  'fPtoYTo8UMUtStJJCBCfbhfHOBeJrUcbEZZJ82n8E0z7XPzv',
+  '6eTxIXjBfwxJCTl1PFnd0bxhFsA9Vk21ZRPtKJkleCxl6lmk',
+  'E8gddNtLuOQTRh0kFl1loqe2pQJDG5d0SWrBvG5MeUv5SFMQ',
+  'OTgKLUZPCwV1jeVR8XDtHo9qpoMdDCWt1axmhtRa5GuCQYoX',
+  'wi1D7Z6czHlPZGSZDRAm48BmRvjeY0Ccx1Jo1yAkXusU9emX',
+  'GyD3wvKtPVKMeZM2d8IxRMEg0YbWLrjEeXUik8UG9LHNkswb',
+  'zQnWARdVmk3SEHer6X5h7N1AQLs4Mp821nJLy6HJk36A045p',
+  'zKT2NaJeNDP5lRuV2WPc0sjv6GFKkPe1BU9dUlyzMDQDEpgj',
+  'cbAzJM4U4QjWSIkYpGk7IKSW9nVK4R1sGleyBcclzcmYC6fg',
+  'z7XdSHX48KHZAot0Fhrv3oahCgX0VNMQjYyRtlPM3EEc455C',
+  'BFL7KjmCVbPlHpU4TeCcPhAvIDrrqbjnWL5G3iiSc0QLsFOh',
+  'iKGFNI4nXxxfBriUBXiuPvVjCDbQyrwSGFVoah1qQ9SYqvNU',
+  'CHz9x4XWc6OGgcRt2wm2cWuYCArQ1vK1DynJhosCOXk75HCw',
+  'rgq9dHRvx7VpJk0tFcyQ0KfjMp7X5CxKMBeHi3btNv2tua4i',
+  'WIqtvrFQNamfOmWNIsV88nDF8cwkNILjLUl30m5OwgIHdp9M',
+  'EFnc0fWBWXKjJYIVvPnh0Vn0uYLKizb7zBlIRX2FEt3ILwuL',
+  '4cnaXiywaYXPok9PSSACblX1wQLnrCCrZPFmaaIPRdtAGCft',
+  'n9tHVVz3quPPMuDzjOoaIV2TD3NUPznRh4tezhhZ8xWkiFhK',
+  'hLPyZLtp3qe6vLQqXFAL4gP46xnDpWTUbnIpk4080grT8Ggn',
+  '9Tjrwtq8tTHfkOxkZv6UsqtnDSO6UwPMLc0s4hsAQDUB2CdW',
+  'ShAbMH3XuQhJkUt6Qfms2wlatSVXOlQNaaKvnNgDoBWJzcce',
+  '5uRPAgSqAflANvTjVq6ngAyqkGR1jmqFtCcOFhMqhpsa4DK8',
+  'yGyxVfnZTkFhP2bdBoxEUd0IHJXokkrgrH4FUALnqe5DAsBO',
+  'Li0lAAQTfVJEfP1fMOAWWVADyuObcFAoidM9z9bXyMFHGITw',
+  '9LDVji4V2bcT2AE0cy3skDiChvwM9fpNTkWc7OTpwop8EJ1e',
+  'v0nJVTjd0UDZi488AMow1pvGIIGKLbLyi1759WKEJIA9ZMFO',
+  'Zs6K5KEk1SALePBsHhCYNKE8lbmEriEU4Hn9jSL2GPWvdXVp',
+  'at6VxYIbqRcCRj6o02nivcPETpyr3IzxodOu0zM4mtoJ1wba',
+  '1YtQfh5zNyrUBrcx6L6Zf0rlxorr9dY3kAMvy4fy6sqNcOr1',
+  'WqjTSsOYmuf9kClp5LlKuHlF7K8g2T8STNiv4V9oZcZrxkCY',
+  'qRxBOTmwRQglJ5JxhfcOvYdmCn279AWrwOE7PsJQnJjT0ly3',
+  'NIzohCbkV7KveTlh0wnLkOOhQXD357L2qRhzhPFi8bmxBlIV',
+  'AU3VyI6Arr0iMgyXXwxwE9Wm9gBZOTmALzUL1S3ooIkLVm2h',
+  'SRRJN9nn00K8ttGS6CAHAcAne9fL1G3PRAOmrVnHZtvFjk2P',
+  'rSgOJrV9cMTJt3uF7EYsnd58lvOEjL8WXU0KROakSCFllzIM',
+  'YAqvm0Tkjf3rdVnHVFHpxFPhaKLx0PajosnVvEeCvxZZrgZT',
+  'SfQUgjANYZPBCrutCexlRXOI3ntsPs3YBGtkmSO29EKQnrMI',
+  'JlplxrEiGKAEyootuvprM5OTBjR6X0RlJI8ojhrhYexbyNLB',
+  'oPGEbIVXSOJaho064oV0CAE9hn31cWdOcXEgSMPkOYBQlcyC',
+  '6htpcy1kX2EvSjEW2bFT3u75PvvqFN2aa6orS39J5X39QntN',
+  'on7UMj0gb1xPUJpPnXQcaY7jhVXV0dtRmKTV0fF2eMI1c8O6',
+  'ZYnaYTWapNLrIZr7Xd7qkUP200WCtBK7qRU4wl3PbJm9B70X',
+  'IT8ydDvyaM4Y5o1sHVRvKrHbxUnKNohcXqzuqFfJf2HdfEqV',
+  '6rHkKkuH4DG4w3tvrXb3ojhI7hpW6rLYYPH8RHdeF3b0zLHv',
+  'p9qat6mvRoBXxdXFJ2H7ul7ZeRjIOMva1orZbVnLhUuWdekb',
+  'uzDHg8PjrE6ySUAAzmlYulp8qvUmTNM3EUn3Vaf5tFovrJop',
+  'mtNXwGuPRMlTOgEhrmpiu0bG7O38DUsR9JIY9fktVV3BetTn',
+  'a36jbvNSl8iXk1LabtzRXvZU6c748V5MlYqGRRWPeppejzie',
+  'l6f3jar49LjiC26akoajEllvvtnpDJSgNH9ufMaJKPB7o9VB',
+  'HemkNktg7QPDmWu69BKmUhpYuihur9VZE3aWKVP74D9f5gGF',
+  'L5fEixtxkaYIEkJCa4J3gXocLg4X8qd5h1pv3sqPwTS3Bpc5',
+  '3h69JpqgTVWcyLolXiOu7RZXqF4TMRbhazFh67aKpeanLXax',
+  'VkYrYpWUBapE9aKLnRFT7eNv0Z75hQfuDSuKVZZrAWAfqEDs',
+  'UdLe7OFntiO7LeDa9WXZTDC6oX2LIusln5LIudUp4eTRoDgS',
+  'gZwztcoQ4MG9gEdPFQE7NKh1O5I71ATBjx3h9WkKpEFEmvUd',
+  'rkbVckmAXnDXF64UTObfPSUzCVbVboR4U5OTiXiWHIVySUqp',
+  'pjRnf4fULTTHjrZmdCTYSFR5cZ64xuPf3ix8b6O4Uebcn8RB',
+  '2GhUATaMfT9NzThMU4CzVdXKKbs3ggacU74n8RZMh8mUN4c0',
+  'Fp2o5v33pHfnZ2yBnzCLcvHyj1syBysFce7wW9UXndMWtQpb',
+  'Yx2PgF8YZ9iUDkmSonL91scknOd0nWavxUWLeGxhmwYjOKdm',
+  'c02uf2pjPS3L6RDqMyHo2ioxByLNRcgrkEknrfwciBLGXGGt',
+  'ojkE9DkuPaeu15fc2wor0tKyMEksaXjdLsZEJwBv0YuEMGw4',
+  'tStR8MENd6hzXnnxRzv4IhSVzDX6VLBicVsTjbSvekw31p10',
+  'PXJFVQwpGD6XCIfENSBEV6c9TvDoKoESR2u32Z7GrWaoN0bQ',
+  'CGnYD9o9rUrdFXzJDf9zJU1f5thFD3IArhdrLuFIShWDjrpa',
+  'k4CGzFn023NdPB3CcQgzJQJM6zoPCUIbG0cgCaqnl3Hht9cK',
+  'DkcIy3qVDe7MHfyqYARvooNA43qh8Fxkb6PbyS6pONAjjWjK',
+  '4OGfwhaFSzq0NEinqcdSNpOld1L0isLN0wF1GzikWxuZWgMX',
+  '4gYQpwBmuPUF2LaV4t91HCtn9rXZvPkHc0saipwNDgX8Mr51',
+  'vX6P37R4AcRtLCmx70lbq9BdTalndaNQbjvl0182IxyiwwBi',
+  '8iydDTTTCp06m1100BD1gjz26F1wWzDBUbgSz3QtXxKiadDn',
+  '0UGdMXlHfPsuGQpQAF9DGoVnKlE2QMkR1DEkufAs3zdklSpt',
+  'OaRM2vt499iGFrEFq1z1MXOqRaxpSBuvsRn1LDsz2C5eD36y',
+  'WbA4AoABDVX4Q9pqvGchF13uMCZzSOfaKacKk1zHKJJJcphV',
+  'dZ8F5nezJHU8VsNmhAU0uoshrEizeghoIWj1fE4vFqzIcIfU',
+  '9FPhbjHwCOViH0pu96qmz5qrrwkMw0070dZbQKDB6Kd1FW53',
+  'jsrA4CUse5sjySnA73R9SWKzJNOESmiETmAW5zB3Pm8N9SWv',
+  '7HuJpR14sjBVyqQD6Y5yzBaGnmmfAB2dRuytOPVsP9j8HZN6',
+].join('');  // 관리자 암호 (95줄)
 
 
 
@@ -9361,6 +9460,7 @@ function maybeToastFromLog(html){
 }
 function renderStats(){
   $('goldTxt').textContent = fmt(S.gold);
+  try{ const _ct=$('coinTxt'); if(_ct) _ct.textContent = fmt(S.coins||0); }catch(e){}
   $('shardTxt').textContent = S.shards;
   const w = worldOf(S.stage);
   {
@@ -15066,9 +15166,168 @@ const boot5=setInterval(function(){
 })();
 </script>
 
+<script>
+/* ================================================================
+   🛡️ 확장팩 6탄 — 문의하기 / F12 차단 / 개발자 등급 시스템
+   ================================================================ */
+(function(){
+'use strict';
+function E$(id){ return document.getElementById(id); }
+
+/* ---------- 📮 문의하기 (GUI → 개발자 우편함으로 전송) ---------- */
+window.openContact = function(){
+  showModal('📮 개발자에게 문의하기',
+    '<div style="text-align:left;font-size:12px;">버그 제보·건의사항을 적어주세요. 개발자 우편함으로 바로 전송됩니다.</div>'
+   +'<textarea id="contactMsg" maxlength="180" placeholder="문의 내용 (최대 180자)" '
+   +'style="width:100%;height:90px;margin-top:8px;background:var(--panel2);color:var(--txt);border:1px solid var(--line);padding:6px;font-family:inherit;font-size:12px;resize:none;"></textarea>'
+   +'<button class="gold-btn" style="width:100%;margin-top:8px;padding:8px;" onclick="sendContact()">📨 보내기</button>');
+};
+window.sendContact = async function(){
+  const el=E$('contactMsg'); const msg=(el&&el.value||'').trim();
+  if(!msg){ alert('문의 내용을 입력해주세요.'); return; }
+  if(typeof NET==='undefined'||!NET.isOnline()){ alert('온라인 연결이 필요합니다.'); return; }
+  try{
+    const r=await NET.req('/mail/send',{to:ADMIN_NICK, nick:(S&&S.nickname)||'익명',
+      subject:'📮 유저 문의', body:msg.slice(0,180)});
+    if(r&&r.ok){
+      log('<span class="g">📮 문의가 개발자 우편함으로 전송되었습니다. 감사합니다!</span>');
+      const m=document.querySelector('.modal, #modal'); // 모달 닫기 시도
+      try{ if(typeof closeModal==='function') closeModal(); else if(m) m.remove(); }catch(e){}
+    } else alert('전송 실패... 잠시 후 다시 시도해주세요.');
+  }catch(e){ alert('전송 실패 (네트워크)'); }
+};
+
+/* ---------- 🚫 F12 / 개발자도구 단축키 차단 ---------- */
+document.addEventListener('keydown', function(ev){
+  const k=(ev.key||'').toLowerCase();
+  if(ev.key==='F12'
+     || (ev.ctrlKey&&ev.shiftKey&&(k==='i'||k==='j'||k==='c'))
+     || (ev.ctrlKey&&(k==='u'))){
+    ev.preventDefault(); ev.stopPropagation();
+    return false;
+  }
+}, true);
+
+/* ---------- 👑 개발자 등급 시스템 (클라 연동) ---------- */
+const RANK_NAMES={7:'개발자',6:'부개발자',5:'균열 관리자',4:'차원 감독관',3:'만물상 감시자',2:'인턴',1:'신입',0:'일반'};
+let myRank = -1;   // -1: 미조회
+async function fetchMyRank(){
+  try{
+    if(S && S.nickname===ADMIN_NICK){ myRank=7; return 7; }
+    if(typeof NET==='undefined'||!NET.isOnline()){ myRank=0; return 0; }
+    const r=await NET.req('/admin/rank/get',{nick:(S&&S.nickname)||''});
+    myRank=(r&&r.ok)?(r.rank|0):0;
+  }catch(e){ myRank=0; }
+  return myRank;
+}
+window.__getMyRank=function(){ return myRank; };
+// 콘솔 접근: 등급 1 이상이면 열림 (세부 기능은 등급별 제한 · 서버도 이중 검증)
+const _chkAdmin = checkAdminAccess;
+checkAdminAccess = function(){
+  if(_chkAdmin()) return true;          // 개발자 본인
+  return myRank>=1;                     // 스태프 등급
+};
+window.checkAdminAccess = checkAdminAccess;
+// 자기 치트류(장비지급·스테이지스킵·직업변경)는 등급 5(균열 관리자) 이상만
+function needRank(n, name){
+  if(S&&S.nickname===ADMIN_NICK) return true;
+  if(myRank>=n) return true;
+  alert('['+name+'] 기능은 ['+RANK_NAMES[n]+'] 등급 이상만 사용할 수 있습니다.\n내 등급: '+RANK_NAMES[Math.max(0,myRank)]);
+  return false;
+}
+for(const [fn,minR,label] of [['devGiveGear',5,'장비 지급'],['devSkipStage',5,'스테이지 스킵'],['devSetJob',5,'직업 변경']]){
+  if(typeof window[fn]==='function'){
+    const _o=window[fn];
+    window[fn]=function(){ if(!needRank(minR,label)) return; return _o.apply(this,arguments); };
+  }
+}
+// 스태프(1~6등급)는 닉네임 변경 금지
+const _chNick = changeNickname;
+changeNickname = async function(nick){
+  if(myRank>=1 && myRank<=6){
+    alert('스태프 등급('+RANK_NAMES[myRank]+')은 이름을 변경할 수 없습니다.\n(이름 변경은 [개발자]에게 요청하세요)');
+    return;
+  }
+  return _chNick.apply(this, arguments);
+};
+window.changeNickname = changeNickname;
+// 원격 명령 'rename' 수신 처리 (개발자가 강제 개명 → 즉시 적용)
+if(typeof applyRemoteCommand==='function'){
+  const _arc=applyRemoteCommand;
+  applyRemoteCommand=function(cmd){
+    try{
+      if(cmd&&cmd.field==='rename'&&cmd.value){
+        const old=S.nickname;
+        S.nickname=String(cmd.value).slice(0,15);
+        log('<span class="gDEV">👑 [운영] 닉네임이 ['+esc(old||'')+'] → ['+esc(S.nickname)+'](으)로 강제 변경되었습니다.</span>');
+        saveGame(true); renderAll();
+        setTimeout(fetchMyRank, 500);
+        return;
+      }
+    }catch(e){}
+    return _arc.apply(this,arguments);
+  };
+  window.applyRemoteCommand=applyRemoteCommand;
+}
+
+/* ---------- 👑 등급 관리 UI (설정 탭 · 스태프에게만 표시) ---------- */
+async function rankSet(){
+  const t=(E$('rkTarget')||{}).value||'', r=parseInt((E$('rkRank')||{}).value)||0;
+  if(!t.trim()){ alert('대상 닉네임을 입력하세요.'); return; }
+  const res=await NET.req('/admin/rank/set',{pass:ADMIN_PASSWORD, admin:S.nickname, target:t.trim(), rank:r});
+  if(res&&res.ok) log('<span class="gDEV">👑 ['+esc(t)+'] → ['+res.rank_name+'] 등급 적용! (대상에게 우편 알림)</span>');
+  else alert('실패: '+((res&&(res.msg||res.error))||'오류'));
+  renderRankUI();
+}
+async function forceRename(){
+  const t=(E$('rnTarget')||{}).value||'', v=(E$('rnNew')||{}).value||'';
+  if(!t.trim()||!v.trim()){ alert('대상과 새 이름을 모두 입력하세요.'); return; }
+  const res=await NET.req('/admin/cmd',{pass:ADMIN_PASSWORD, admin:S.nickname, target:t.trim(), field:'rename', value:v.trim().slice(0,15)});
+  if(res&&res.ok) log('<span class="gDEV">👑 ['+esc(t)+'] 접속 시 ['+esc(v)+'](으)로 강제 개명됩니다. (개명 후 승급도 가능)</span>');
+  else alert('실패: '+((res&&(res.msg||res.error))||'권한 부족'));
+}
+window.rankSet=rankSet; window.forceRename=forceRename;
+function renderRankUI(){
+  const set=E$('tab-set'); if(!set) return;
+  if(myRank<1){ const b=E$('x6RankBox'); if(b) b.style.display='none'; return; }
+  if(!E$('x6RankBox')){
+    set.insertAdjacentHTML('beforeend','<h2 style="margin-top:12px;">👑 운영 등급 <span id="x6MyRank" style="color:var(--gold);font-size:12px;"></span></h2><div id="x6RankBox"></div>');
+  }
+  E$('x6RankBox').style.display='';
+  if(E$('x6MyRank')) E$('x6MyRank').textContent='내 등급: ['+RANK_NAMES[Math.max(0,myRank)]+']';
+  const perms={1:'밴',2:'밴 · 구매승인',3:'밴 · 구매 · 골드지급',4:'밴 · 구매 · 유저조작(골드/스탯/스테이지/레벨)',5:'밴 · 구매 · 유저조작 전체 · 자기치트',6:'전부 (승급 제외)',7:'전부 + 승급 + 강제개명'};
+  let h='<div class="notice" style="margin:0 0 6px;">권한: '+ (perms[myRank]||'-') +'<br>등급표: 신입→인턴→만물상 감시자→차원 감독관→균열 관리자→부개발자→개발자</div>';
+  if(myRank>=7){
+    h+='<div class="row"><div class="info">👑 스태프 승급/강등<small>[개발자]만 가능 · 0=해임</small></div>'
+      +'<div style="display:flex;gap:3px;align-items:center;"><input id="rkTarget" placeholder="닉네임" style="width:80px;background:var(--panel2);color:var(--txt);border:1px solid var(--line);padding:4px;font-size:11px;">'
+      +'<select id="rkRank" style="background:var(--panel2);color:var(--txt);border:1px solid var(--line);padding:4px;font-size:11px;">'
+      +[0,1,2,3,4,5,6].map(n=>'<option value="'+n+'">'+n+' '+RANK_NAMES[n]+'</option>').join('')
+      +'</select><button class="gold-btn" onclick="rankSet()">적용</button></div></div>'
+      +'<div class="row"><div class="info">✏️ 강제 이름 변경<small>대상 접속 시 즉시 개명 → 개명 후 승급 가능</small></div>'
+      +'<div style="display:flex;gap:3px;"><input id="rnTarget" placeholder="현재 닉" style="width:70px;background:var(--panel2);color:var(--txt);border:1px solid var(--line);padding:4px;font-size:11px;">'
+      +'<input id="rnNew" placeholder="새 닉" style="width:70px;background:var(--panel2);color:var(--txt);border:1px solid var(--line);padding:4px;font-size:11px;">'
+      +'<button class="gold-btn" onclick="forceRename()">변경</button></div></div>';
+  }
+  E$('x6RankBox').innerHTML=h;
+}
+setInterval(function(){ try{ renderRankUI(); }catch(e){} }, 3000);
+setInterval(function(){ try{ if(typeof S!=='undefined'&&S) fetchMyRank(); }catch(e){} }, 30000);
+const boot6=setInterval(function(){
+  try{
+    if(typeof S!=='undefined'&&S){
+      clearInterval(boot6);
+      fetchMyRank().then(function(){ renderRankUI(); });
+      log('<span class="p">🛡️ 확장팩 6탄 로드! 문의하기·보안·운영 등급 시스템 활성화</span>');
+    }
+  }catch(e){}
+}, 1000);
+})();
+</script>
+
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79","server_timing":{"name":{"cfCacheStatus":true,"cfEdge":true,"cfExtPri":true,"cfL4":true,"cfOrigin":true,"cfSpeedBrain":true},"location_startswith":null}}' crossorigin="anonymous"></script>
 <script type="module" src="https://static.cloudflareinsights.com/beacon.min.js/v4513226cdae34746b4dedf0b4dfa099e1781791509496" integrity="sha512-ZE9pZaUXND66v380QUtch/5sE9tPFh2zg45pR2PB0CVkCtOREv2AJKkSidISWkysEuQ0EH8faUU5du78bx87UQ==" data-cf-beacon='{"version":"2024.11.0","token":"4edd5f8ec12a48cfa682ab8261b80a79"}' crossorigin="anonymous"></script>
 </body>
 </html>
 
 <!-- Auto-save on page leave -->
+

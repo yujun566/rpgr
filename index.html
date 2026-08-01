@@ -14983,58 +14983,11 @@ function renderX4set(){
 }
 
 /* ═══ ⑮ 친구 목록 & 선물 (tab-social) ═══ */
-function addFriend(){
-  const e=x4(); if(!e) return;
-  const v=((E$('x4FriendIn')||{}).value||'').trim().slice(0,20);
-  if(!v){ log('<span class="r">친구 닉네임을 입력하세요.</span>'); return; }
-  if(e.friends.includes(v)){ log('<span class="y">이미 등록된 친구입니다.</span>'); return; }
-  if(e.friends.length>=10){ log('<span class="r">친구는 최대 10명입니다.</span>'); return; }
-  e.friends.push(v);
-  log('<span class="g">👥 ['+esc(v)+'] 친구 등록!</span>');
-  saveGame(true); renderX4social();
-}
-function delFriend(n){
-  const e=x4(); if(!e) return;
-  e.friends=e.friends.filter(f=>f!==n);
-  saveGame(true); renderX4social();
-}
-async function sendGift(n){
-  const e=x4(); if(!e) return;
-  if(e.gift.date===todayStr()&&e.gift.sent){ log('<span class="y">선물은 하루 1회만 보낼 수 있습니다.</span>'); return; }
-  const amt=Math.floor(BAL.goldDrop(S.stage)*10);
-  if(S.gold<amt){ log('<span class="r">골드 부족 ('+fmt(amt)+'G)</span>'); return; }
-  if(typeof NET==='undefined'||!NET.getBase || !NET.getBase()){ log('<span class="r">서버에 연결되어 있지 않습니다. 잠시 후 다시 시도해주세요.</span>'); return; }
-  S.gold-=amt;                                  // 낙관적 차감
-  let sent=false;
-  for(let attempt=0; attempt<2 && !sent; attempt++){   // 실패 시 1회 재시도
-    let r=null;
-    try{ r=await NET.req('/mail/send',{to:n, nick:S.nickname||'만물상', subject:'🎁 친구 선물', body:'친구가 보낸 선물입니다!', gold:amt}); }catch(err){ r=null; }
-    if(r&&r.ok){ sent=true; break; }
-    if(attempt===0) await new Promise(res=>setTimeout(res,600));  // 잠깐 쉬고 재시도
-  }
-  if(sent){
-    e.gift={date:todayStr(),sent:true};
-    log('<span class="g">🎁 ['+esc(n)+']에게 '+fmt(amt)+'G 선물 발송! (우편함으로 전달)</span>');
-  } else {
-    S.gold+=amt;   // 실패 → 골드 환불
-    log('<span class="r">선물 전송에 실패했습니다. 골드를 돌려드렸어요. 잠시 후 다시 시도해주세요.</span>');
-  }
-  saveGame(true); renderX4social(); renderAll();
-}
-window.addFriend=addFriend; window.delFriend=delFriend; window.sendGift=sendGift;
-function renderX4social(){
-  if(!E$('x4SocBox')) return;
-  // 🛡️ 입력 중 보호: 이 박스 안에 커서(포커스)가 있으면 다시 그리지 않음 (타이핑 날아감 방지)
-  try{ const _ae=document.activeElement; if(_ae && E$('x4SocBox').contains(_ae) && /INPUT|TEXTAREA|SELECT/.test(_ae.tagName)) return; }catch(e){}
-  const e=x4();
-  const sent=e.gift.date===todayStr()&&e.gift.sent;
-  E$('x4SocBox').innerHTML =
-    '<div class="row"><div class="info">👥 친구 등록 ('+e.friends.length+'/10)<small>닉네임 입력 · 하루 1명에게 골드 선물 (서버 우편)</small></div>'
-   +'<div style="display:flex;gap:4px;"><input id="x4FriendIn" placeholder="닉네임" style="width:90px;background:var(--panel2);color:var(--txt);border:1px solid var(--line);padding:4px;font-size:11px;"><button onclick="addFriend()">등록</button></div></div>'
-   +e.friends.map(n=>'<div class="row"><div class="info">👤 '+esc(n)+'</div><div style="display:flex;gap:3px;">'
-     +'<button class="gold-btn" style="font-size:10px;" '+(sent?'disabled':'')+' onclick="sendGift(\''+n.replace(/'/g,"\\'")+'\')">'+(sent?'오늘 완료':'🎁 선물')+'</button>'
-     +'<button style="font-size:10px;" onclick="delFriend(\''+n.replace(/'/g,"\\'")+'\')">삭제</button></div></div>').join('');
-}
+/* 👥 친구 & 선물 기능은 제거되었습니다 (no-op) */
+function addFriend(){}
+function delFriend(){}
+async function sendGift(){}
+function renderX4social(){ const b=E$('x4SocBox'); if(b&&b.parentNode){ /* 남은 UI 정리 */ } }
 
 /* ═══ UI 주입 + 렌더 루프 ═══ */
 function inj(tabId, boxId, title){
@@ -15050,13 +15003,13 @@ function injectX4(){
   inj('tab-content','x4ContBox','🎮 오락실 & 자동화');
   inj('tab-talent','x4TalBox','📈 스킬 숙련도');
   inj('tab-set','x4SetBox','📊 통계 & 테마');
-  inj('tab-social','x4SocBox','👥 친구 & 선물');
+  // 👥 친구 & 선물 기능 제거됨
 }
 function renderX4(){
   if(!x4()) return;
   injectX4();
   renderX4up(); renderX4eq(); renderX4art(); renderX4shop();
-  renderX4content(); renderX4talent(); renderX4set(); renderX4social();
+  renderX4content(); renderX4talent(); renderX4set();
 }
 setInterval(function(){ try{ renderX4(); }catch(e){} }, 2500);
 document.addEventListener('click', function(ev){

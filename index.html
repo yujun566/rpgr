@@ -2897,6 +2897,7 @@ const NET = (() => {
       try{ payload = await res.json(); }catch(_e){}
       if(res.ok){
         online = true;
+        _failStreak = 0;   // 성공하면 실패 누적 초기화
         return payload;
       }
       // 429 같은 서버 응답은 "서버 꺼짐"이 아니라 정상적인 거절 응답으로 취급
@@ -2906,7 +2907,10 @@ const NET = (() => {
       }
       throw new Error('http ' + res.status);
     }catch(e){
-      online = false;
+      // 🛡️ 단발성 실패(선물 전송 등 일시적 오류)로 곧장 오프라인 처리하지 않음.
+      //    연속 3회 실패했을 때만 오프라인으로 간주 (핑이 살아있으면 유지)
+      _failStreak = (_failStreak||0) + 1;
+      if(_failStreak >= 3) online = false;
       if(Date.now() - lastErr > 30000){
         lastErr = Date.now();
         console.warn('서버 통신 실패:', e.message);
@@ -2914,6 +2918,7 @@ const NET = (() => {
       return null;
     }
   }
+  let _failStreak = 0;
 
   async function connect(){
     for(const url of candidates()){
@@ -14998,15 +15003,22 @@ async function sendGift(n){
   if(e.gift.date===todayStr()&&e.gift.sent){ log('<span class="y">선물은 하루 1회만 보낼 수 있습니다.</span>'); return; }
   const amt=Math.floor(BAL.goldDrop(S.stage)*10);
   if(S.gold<amt){ log('<span class="r">골드 부족 ('+fmt(amt)+'G)</span>'); return; }
-  try{
-    if(typeof NET==='undefined'||!NET.isOnline()){ log('<span class="r">온라인 연결이 필요합니다.</span>'); return; }
-    S.gold-=amt;
-    const r=await NET.req('/mail/send',{to:n, nick:S.nickname||'만물상', subject:'🎁 친구 선물', body:'친구가 보낸 선물입니다!', gold:amt});
-    if(r&&r.ok){
-      e.gift={date:todayStr(),sent:true};
-      log('<span class="g">🎁 ['+esc(n)+']에게 '+fmt(amt)+'G 선물 발송! (우편함으로 전달)</span>');
-    } else { S.gold+=amt; log('<span class="r">선물 전송 실패...</span>'); }
-  }catch(err){ S.gold+=amt; log('<span class="r">선물 전송 실패 (네트워크)</span>'); }
+  if(typeof NET==='undefined'||!NET.getBase || !NET.getBase()){ log('<span class="r">서버에 연결되어 있지 않습니다. 잠시 후 다시 시도해주세요.</span>'); return; }
+  S.gold-=amt;                                  // 낙관적 차감
+  let sent=false;
+  for(let attempt=0; attempt<2 && !sent; attempt++){   // 실패 시 1회 재시도
+    let r=null;
+    try{ r=await NET.req('/mail/send',{to:n, nick:S.nickname||'만물상', subject:'🎁 친구 선물', body:'친구가 보낸 선물입니다!', gold:amt}); }catch(err){ r=null; }
+    if(r&&r.ok){ sent=true; break; }
+    if(attempt===0) await new Promise(res=>setTimeout(res,600));  // 잠깐 쉬고 재시도
+  }
+  if(sent){
+    e.gift={date:todayStr(),sent:true};
+    log('<span class="g">🎁 ['+esc(n)+']에게 '+fmt(amt)+'G 선물 발송! (우편함으로 전달)</span>');
+  } else {
+    S.gold+=amt;   // 실패 → 골드 환불
+    log('<span class="r">선물 전송에 실패했습니다. 골드를 돌려드렸어요. 잠시 후 다시 시도해주세요.</span>');
+  }
   saveGame(true); renderX4social(); renderAll();
 }
 window.addFriend=addFriend; window.delFriend=delFriend; window.sendGift=sendGift;

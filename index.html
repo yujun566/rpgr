@@ -3400,6 +3400,17 @@ async function netSyncMail(){
 // 우편 수령 시 골드 + 아이템(경매 낙찰/반환) 모두 반영
 function applyMailReward(r){
   if(r.gold){ S.gold += r.gold; recGold(r.gold); }
+  // 💎 디스코드 코인샵 교환권: 제목의 [코인:N] 마커를 인식해 게임 코인 지급
+  try{
+    const m = String(r.subject||'').match(/\[코인:(\d+)\]/);
+    if(m){
+      const c = Math.max(0, Math.min(100000, parseInt(m[1])||0));
+      if(c > 0){
+        S.coins = (S.coins||0) + c;
+        log('<span class="gP">💎 코인 교환권 사용! 코인 +'+c+' (보유 '+fmt(S.coins)+')</span>');
+      }
+    }
+  }catch(e){}
   let itemName = '';
   if(r.item_json){
     try{

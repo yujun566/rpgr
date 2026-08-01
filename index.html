@@ -1174,6 +1174,8 @@ input, textarea, [contenteditable], [style*="user-select:all"], [style*="user-se
         <button class="buy" style="flex:1;font-size:11px" onclick="sfx('legend')">🔔 소리 테스트</button>
         <button class="buy" style="flex:1;font-size:11px;border-color:var(--gold);color:var(--gold)" onclick="openContact()">📮 문의하기</button>
         <button class="buy" style="flex:1;font-size:11px;border-color:var(--rift);color:var(--rift)" onclick="openCoupon()">🎁 코드 입력</button>
+        <button class="buy" style="flex:1;font-size:11px;border-color:var(--cyan);color:var(--cyan)" onclick="openNotice()">📢 공지사항</button>
+        <button class="buy" style="flex:1;font-size:11px;border-color:var(--green);color:var(--green)" onclick="startTutorial(true)">📚 튜토리얼</button>
         <button class="buy" style="flex:1;font-size:11px" onclick="replayIntro()">🎬 인트로 다시보기</button>
       </div>
     </div>
@@ -4502,6 +4504,8 @@ function endIntro(){
   }
   try{ sfx('stage'); }catch(e){}
   try{ if(S && S.settings && S.settings.bgm && typeof BGM !== 'undefined') BGM.start(); }catch(e){}
+  // 📚 인트로가 끝나면 처음 온 유저에게 튜토리얼 시작
+  try{ if(typeof startTutorialIfNew==='function') setTimeout(startTutorialIfNew, 800); }catch(e){}
 }
 
 function hasSeenIntro(){
@@ -9655,11 +9659,15 @@ function renderAll(){ renderStats(); renderEquip(); renderArts(); renderShop(); 
 
 /* ---------- 모달 ---------- */
 
-function showModal(title, bodyHtml){
+function showModal(title, bodyHtml, okLabel){
   $('modalTitle').textContent = title;
   $('modalBody').innerHTML = bodyHtml;
+  // 버튼 라벨: 지정 없으면 '닫기' (범용 알림) — 보상 지급 창에서만 '받기'를 명시적으로 넘김
+  try{ $('modalOk').textContent = okLabel || '닫기'; }catch(e){}
   $('modalBg').style.display = 'flex';
 }
+// 전역 닫기 함수 (튜토리얼/공지/문의 등에서 사용)
+window.closeModal = function(){ try{ $('modalBg').style.display = 'none'; }catch(e){} };
 $('modalOk').onclick = ()=> $('modalBg').style.display = 'none';
 
 /* ---------- 탭 ---------- */
@@ -15799,6 +15807,151 @@ setInterval(function(){ try{ renderSlowAuto(); }catch(e){} }, 3000);
     }catch(e){}
   }, 1500);
 })();
+})();
+</script>
+
+<script>
+/* 📢 확장팩 11탄 — 공지사항 */
+(function(){
+'use strict';
+function E$(id){ return document.getElementById(id); }
+let cachedNotice='', cachedTs=0;
+async function loadNotice(){
+  try{
+    if(typeof NET==='undefined'||!NET.getBase||!NET.getBase()) return null;
+    const r=await NET.req('/notice/get',{});
+    if(r&&r.ok){ cachedNotice=r.notice||''; cachedTs=r.ts||0; return r; }
+  }catch(e){}
+  return null;
+}
+function noticeHtml(){
+  if(!cachedNotice) return '<div style="color:var(--mut);text-align:center;padding:20px 0;">등록된 공지가 없습니다.</div>';
+  const when = cachedTs? new Date(cachedTs*1000).toLocaleString('ko-KR') : '';
+  const safe = esc(cachedNotice).replace(/\n/g,'<br>');
+  return '<div style="text-align:left;font-size:13px;line-height:1.7;">'+safe+'</div>'
+    +(when?'<div style="text-align:right;font-size:10px;color:var(--mut);margin-top:8px;">📅 '+when+'</div>':'');
+}
+window.openNotice=async function(){
+  await loadNotice();
+  let body='<div style="max-height:300px;overflow-y:auto;">'+noticeHtml()+'</div>';
+  const rank=(typeof window.__getMyRank==='function')?window.__getMyRank():-1;
+  const isDev=(typeof S!=='undefined'&&S&&typeof ADMIN_NICK!=='undefined'&&S.nickname===ADMIN_NICK);
+  if(isDev || rank>=5){
+    body+='<div style="border-top:1px dashed var(--line);margin-top:10px;padding-top:8px;">'
+      +'<div style="font-size:11px;color:var(--gold);margin-bottom:4px;">✍️ 공지 작성/수정 (관리자)</div>'
+      +'<textarea id="noticeEdit" maxlength="1000" placeholder="공지 내용 (최대 1000자, 줄바꿈 가능)" '
+      +'style="width:100%;height:100px;background:var(--panel2);color:var(--txt);border:1px solid var(--line);padding:6px;font-family:inherit;font-size:12px;resize:none;">'+esc(cachedNotice)+'</textarea>'
+      +'<button class="gold-btn" style="width:100%;margin-top:6px;padding:7px;" onclick="saveNotice()">📢 공지 등록</button></div>';
+  }
+  showModal('📢 공지사항', body);
+};
+window.saveNotice=async function(){
+  const el=E$('noticeEdit'); const text=(el&&el.value||'').slice(0,1000);
+  try{
+    const r=await NET.req('/notice/set',{pass:ADMIN_PASSWORD, admin:(S&&S.nickname)||'', text:text});
+    if(r&&r.ok){
+      cachedNotice=text; cachedTs=Math.floor(Date.now()/1000);
+      log('<span class="gDEV">📢 공지사항이 등록되었습니다!</span>');
+      try{ if(typeof closeModal==='function') closeModal(); }catch(e){}
+    } else alert('실패: '+((r&&(r.need?('권한 부족 — '+r.need+' 이상 필요'):r.error))||'오류'));
+  }catch(e){ alert('네트워크 오류'); }
+};
+async function autoPopup(){
+  const r=await loadNotice();
+  if(!r||!cachedNotice) return;
+  let seen=0; try{ seen=parseInt(localStorage.getItem('rift-notice-seen')||'0')||0; }catch(e){}
+  if(cachedTs>seen){
+    try{ localStorage.setItem('rift-notice-seen', String(cachedTs)); }catch(e){}
+    setTimeout(function(){ try{ window.openNotice(); }catch(e){} }, 2500);
+  }
+}
+const boot11=setInterval(function(){
+  try{
+    if(typeof S!=='undefined'&&S){
+      clearInterval(boot11);
+      setTimeout(autoPopup, 4000);
+      log('<span class="p">📢 확장팩 11탄 로드! 설정 탭에서 공지사항을 확인할 수 있습니다.</span>');
+    }
+  }catch(e){}
+}, 1400);
+})();
+</script>
+
+<script>
+/* ================================================================
+   📚 확장팩 12탄 — 튜토리얼 (단계별 GUI)
+   인트로 종료 후 자동 시작 · 설정 탭 [📚 튜토리얼]로 언제든 다시보기
+   ================================================================ */
+(function(){
+'use strict';
+// 튜토리얼 단계: 무엇을 해야 하는지 + 어떤 기능인지 안내
+const STEPS = [
+  { icon:'⚔️', title:'환영합니다, 만물상님!',
+    body:'차원의 균열 앞에 가게를 차린 당신의 모험이 시작됩니다.<br><br>이 튜토리얼은 <b>기본 조작</b>과 <b>주요 기능</b>을 알려드려요. 언제든 설정 탭의 <b>📚 튜토리얼</b>로 다시 볼 수 있습니다.' },
+  { icon:'👆', title:'① 전투 — 몬스터를 공격하세요',
+    body:'가운데 <b>게임 화면(캐릭터가 있는 곳)</b>을 <b>탭/클릭</b>하면 몬스터를 공격합니다.<br><br>몬스터를 처치하면 <b>골드</b>와 <b>경험치</b>, 가끔 <b>장비</b>가 나와요. 계속 눌러서 사냥하세요!' },
+  { icon:'👹', title:'② 보스전 — 스테이지 돌파',
+    body:'일반 몬스터를 <b>10마리</b> 잡으면 <b>보스 도전</b> 버튼이 활성화됩니다.<br><br>보스를 처치하면 <b>다음 스테이지</b>로 넘어가요. 스테이지가 오를수록 몬스터가 강해지고 보상도 커집니다!' },
+  { icon:'⚔️', title:'③ 강화 탭 — 더 강해지기',
+    body:'<b>강화</b> 탭에서 골드로 <b>공격력·방어력</b>을 올릴 수 있어요.<br><br>스탯 포인트를 <b>힘/민첩/체력</b>에 분배하고, <b>🐢 무료 자동 전투</b>를 켜면 자동으로 사냥합니다!' },
+  { icon:'🎒', title:'④ 장비·인벤토리',
+    body:'<b>장비·인벤토리</b> 탭에서 무기·방어구를 장착하고 강화하세요.<br><br>인벤토리가 가득 차기 전에 <b>🧹 일괄 판매</b>로 정리하고, 좋은 장비는 <b>🔒 잠금</b>해두면 안전합니다.' },
+  { icon:'🛒', title:'⑤ 상점 & 뽑기',
+    body:'<b>만물상 상점</b> 탭에서 <b>가챠(뽑기)</b>로 강력한 장비를 얻고, <b>🏷️ 일일 특가</b>와 <b>🏦 골드 예금</b>도 이용하세요.<br><br>매일 접속하면 <b>출석 보상</b>도 챙길 수 있어요!' },
+  { icon:'🌌', title:'⑥ 모험+ — 풍부한 콘텐츠',
+    body:'<b>모험+</b> 탭에는 <b>보스 도전·시즌·낚시·미궁·카드·도감</b> 등 수십 가지 콘텐츠가 있어요.<br><br>상단 <b>바로가기 칩</b>으로 원하는 곳으로 이동하고, 제목을 눌러 접었다 펼 수 있습니다.' },
+  { icon:'🐲', title:'⑦ 온라인 — 함께 즐기기',
+    body:'<b>소셜</b> 탭에서 <b>채팅·길드·랭킹</b>에 참여하세요.<br><br>매시 정각엔 <b>레이드</b>가 열려 다른 유저들과 함께 거대 보스를 공격합니다. 우측 하단 버튼으로 입장하세요!' },
+  { icon:'🎁', title:'⑧ 이것도 잊지 마세요!',
+    body:'· <b>🎁 코드 입력</b> — 이벤트 쿠폰으로 보상 받기<br>· <b>📢 공지사항</b> — 업데이트 소식 확인<br>· <b>📮 문의하기</b> — 개발자에게 버그 제보<br>· <b>🔮 환생</b> — 특정 스테이지 후 환생하면 영구 강해집니다!' },
+  { icon:'🎉', title:'준비 완료!',
+    body:'이제 당신만의 모험을 시작하세요.<br><br>꾸준히 사냥하고, 강해지고, 더 깊은 균열로 나아가세요.<br><b>행운을 빕니다, 만물상님!</b> 🍀' },
+];
+let idx=0;
+
+function render(){
+  const s=STEPS[idx];
+  const dots=STEPS.map((_,i)=>'<span style="display:inline-block;width:7px;height:7px;border-radius:50%;margin:0 2px;background:'+(i===idx?'var(--gold)':'var(--line)')+'"></span>').join('');
+  const prev = idx>0 ? '<button onclick="tutPrev()" style="flex:1;">← 이전</button>' : '';
+  const nextLabel = idx<STEPS.length-1 ? '다음 →' : '시작하기! 🎮';
+  const body =
+    '<div style="text-align:center;font-size:40px;margin:4px 0 8px;">'+s.icon+'</div>'
+   +'<div style="text-align:center;font-size:15px;color:var(--gold);font-weight:bold;margin-bottom:10px;">'+s.title+'</div>'
+   +'<div style="text-align:left;font-size:13px;line-height:1.8;min-height:110px;">'+s.body+'</div>'
+   +'<div style="text-align:center;margin:12px 0 8px;">'+dots+' <span style="font-size:10px;color:var(--mut);margin-left:6px;">'+(idx+1)+'/'+STEPS.length+'</span></div>'
+   +'<div style="display:flex;gap:6px;">'+prev
+   +'<button class="gold-btn" onclick="tutNext()" style="flex:2;padding:9px;">'+nextLabel+'</button></div>'
+   +'<div style="text-align:center;margin-top:6px;"><button onclick="tutSkip()" style="font-size:10px;color:var(--mut);border:none;background:none;">건너뛰기 ✕</button></div>';
+  if(typeof showModal==='function') showModal('📚 튜토리얼', body);
+}
+window.tutNext=function(){ if(idx<STEPS.length-1){ idx++; render(); } else { tutSkip(); } };
+window.tutPrev=function(){ if(idx>0){ idx--; render(); } };
+window.tutSkip=function(){
+  try{ localStorage.setItem('rift-tutorial-seen','1'); }catch(e){}
+  try{ if(typeof closeModal==='function') closeModal(); }catch(e){}
+  try{ if(typeof log==='function') log('<span class="c">📚 튜토리얼 종료 — 설정 탭에서 언제든 다시 볼 수 있어요!</span>'); }catch(e){}
+};
+window.startTutorial=function(force){
+  idx=0; render();
+  if(force){ try{ localStorage.setItem('rift-tutorial-seen','1'); }catch(e){} }
+};
+window.startTutorialIfNew=function(){
+  let seen=false; try{ seen=localStorage.getItem('rift-tutorial-seen')==='1'; }catch(e){}
+  if(!seen){ window.startTutorial(false); }
+};
+// 인트로를 이미 봤지만 튜토리얼은 아직인 유저(업데이트로 처음 추가된 경우) 대비: 접속 후 1회 체크
+const bootTut=setInterval(function(){
+  try{
+    if(typeof S!=='undefined'&&S){
+      clearInterval(bootTut);
+      // 인트로가 이미 끝난 상태(재접속)면 여기서 신규 여부 확인
+      let introSeen=false, tutSeen=false;
+      try{ introSeen=localStorage.getItem('rift-intro-seen')==='1'; tutSeen=localStorage.getItem('rift-tutorial-seen')==='1'; }catch(e){}
+      if(introSeen && !tutSeen){ setTimeout(window.startTutorialIfNew, 1500); }
+      try{ if(typeof log==='function') log('<span class="p">📚 확장팩 12탄 로드! 튜토리얼이 추가되었습니다.</span>'); }catch(e){}
+    }
+  }catch(e){}
+}, 1400);
 })();
 </script>
 

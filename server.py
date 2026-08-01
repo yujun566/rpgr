@@ -1041,7 +1041,8 @@ def api(path, q, body):
                             (mid, nick)).fetchone()
             if not row: return {'ok': False, 'error': 'not_found'}
             c.execute('UPDATE mail SET taken=1 WHERE id=?', (mid,))
-            return {'ok': True, 'gold': row['gold'], 'item_json': row['item_json'] or ''}
+            return {'ok': True, 'gold': row['gold'], 'item_json': row['item_json'] or '',
+                    'subject': row['subject'] or ''}   # 💎 [코인:N] 교환권 마커 인식용
 
         if path == '/mail/send':
             c.execute('INSERT INTO mail(receiver,sender,subject,body,gold,ts) VALUES(?,?,?,?,?,?)',

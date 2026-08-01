@@ -150,6 +150,7 @@ API_PATHS = {
     '/auction/mine', '/auction/cancel',
     '/nick/claim',
     '/mail/list', '/mail/take', '/mail/send', '/ping',
+    '/notice/get', '/notice/set',
     '/click/report', '/ban/check',
     '/admin/cmd', '/admin/pending', '/admin/ban', '/admin/unban',
     '/admin/rank/set', '/admin/rank/list', '/admin/rank/get',
@@ -218,7 +219,7 @@ RATE_EXEMPT = {
     '/ping', '/ban/check', '/click/report', '/admin/pending', '/admin/rank/get',
     '/purchase/mine', '/purchase/list',
     '/chat/list', '/chat/poll', '/rank/list', '/online', '/guild/list', '/guild/info',
-    '/boss/state', '/mail/list', '/auction/list', '/auction/mine',
+    '/boss/state', '/mail/list', '/auction/list', '/auction/mine', '/notice/get',
 }
 
 def rate_ok(ip, path=None):
@@ -412,6 +413,10 @@ def init_db():
             ts INTEGER NOT NULL);
         CREATE INDEX IF NOT EXISTS idx_preq ON purchase_req(status, ts);
 
+        -- 서버 메타 정보 (채팅 일일 초기화 마커 등)
+        CREATE TABLE IF NOT EXISTS meta(
+            k TEXT PRIMARY KEY, v TEXT NOT NULL);
+
         -- 👑 개발자 등급 (닉네임 -> 등급 숫자)
         CREATE TABLE IF NOT EXISTS admin_ranks(
             nick TEXT PRIMARY KEY,
@@ -490,9 +495,34 @@ def chat_notify(room, new_id):
         _chat_seq[room] = max(_chat_seq.get(room, 0), new_id)
         _chat_cond.notify_all()
 
+def kst_day():
+    """한국(KST, UTC+9) 기준 오늘 날짜 문자열"""
+    return time.strftime('%Y-%m-%d', time.gmtime(now() + 9 * 3600))
+
+def ensure_chat_daily_reset(c):
+    """🧹 한국시간 자정 기준으로 하루가 바뀌면 채팅 전체 비우기"""
+    today = kst_day()
+    row = c.execute("SELECT v FROM meta WHERE k='chat_reset_day'").fetchone()
+    if row and row['v'] == today:
+        return
+    c.execute('DELETE FROM chat')
+    c.execute("INSERT INTO meta(k,v) VALUES('chat_reset_day',?) "
+              "ON CONFLICT(k) DO UPDATE SET v=?", (today, today))
+    if not row:
+        return   # 최초 기동 시엔 마커만 기록
+    # 초기화 안내 메시지 1건 남기기
+    c.execute("INSERT INTO chat(room,nick,msg,ts) VALUES('global','시스템',"
+              "'🧹 매일 자정(한국시간) 채팅이 초기화됩니다. 오늘도 좋은 하루!', ?)", (now(),))
+    try:
+        nid = c.execute('SELECT last_insert_rowid() i').fetchone()['i']
+        chat_notify('global', nid)
+    except Exception:
+        pass
+
+
 def chat_poll(room, since, wait_sec):
     """since 이후 새 메시지가 생길 때까지 최대 wait_sec 대기 (락을 잡지 않고 대기)."""
-    wait_sec = max(1, min(20, int(wait_sec or 15)))
+    wait_sec = max(1, min(12, int(wait_sec or 10)))
     deadline = time.time() + wait_sec
     while True:
         cur = chat_seq(room)
@@ -777,6 +807,7 @@ def api(path, q, body):
     with _lock, db_ctx() as c:
         # ---------- 1. 채팅 ----------
         if path == '/chat/send':
+            ensure_chat_daily_reset(c)
             nick = (body.get('nick') or '익명')[:20]
             msg = (body.get('msg') or '')[:200]
             room = (body.get('room') or 'global')[:40]
@@ -791,6 +822,7 @@ def api(path, q, body):
             return {'ok': True, 'id': new_id}
 
         if path == '/chat/list':
+            ensure_chat_daily_reset(c)
             room = str(P('room', 'global'))[:40]
             since = int(P('since', 0) or 0)
             rows = c.execute('SELECT id,nick,msg,ts FROM chat WHERE room=? AND id>? '
@@ -1385,6 +1417,26 @@ def api(path, q, body):
             c.execute('DELETE FROM bans WHERE nick=?', (target,))
             return {'ok': True}
 
+        # ---------- 📢 공지사항 ----------
+        if path == '/notice/get':
+            row = c.execute("SELECT v FROM meta WHERE k='notice'").fetchone()
+            tsr = c.execute("SELECT v FROM meta WHERE k='notice_ts'").fetchone()
+            return {'ok': True, 'notice': (row['v'] if row else ''),
+                    'ts': int(tsr['v']) if tsr else 0}
+
+        if path == '/notice/set':
+            # 등급 5(균열 관리자) 이상 또는 [개발자]만 작성 가능
+            if str(P('pass', '')) != ADMIN_PASSWORD:
+                return {'ok': False, 'error': 'auth_failed'}
+            if rank_of(c, str(P('admin', ''))[:20].strip()) < 5:
+                return {'ok': False, 'error': 'rank_denied', 'need': RANK_NAMES[5]}
+            text = str(P('text', ''))[:1000]
+            c.execute("INSERT INTO meta(k,v) VALUES('notice',?) "
+                      "ON CONFLICT(k) DO UPDATE SET v=?", (text, text))
+            c.execute("INSERT INTO meta(k,v) VALUES('notice_ts',?) "
+                      "ON CONFLICT(k) DO UPDATE SET v=?", (str(now()), str(now())))
+            return {'ok': True}
+
         if path == '/ping':
             # 클라이언트가 접속에 쓸 주소를 서버가 직접 알려준다
             # (EXE/브라우저 어느 쪽에서 접속해도 올바른 주소를 잡도록)
@@ -1406,14 +1458,17 @@ def api(path, q, body):
 
 class Handler(BaseHTTPRequestHandler):
     def _send(self, obj, code=200):
-        data = json.dumps(obj, ensure_ascii=False).encode('utf-8')
-        self.send_response(code)
-        self.send_header('Content-Type', 'application/json; charset=utf-8')
-        self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
-        self.send_header('Content-Length', str(len(data)))
-        self.end_headers()
-        self.wfile.write(data)
+        try:
+            data = json.dumps(obj, ensure_ascii=False).encode('utf-8')
+            self.send_response(code)
+            self.send_header('Content-Type', 'application/json; charset=utf-8')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+            self.send_header('Content-Length', str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+        except (BrokenPipeError, ConnectionResetError, OSError):
+            pass   # 클라이언트가 먼저 연결을 끊음 (탭 전환 등) — 무시
 
     def do_OPTIONS(self):
         self.send_response(204)
@@ -1587,18 +1642,24 @@ if __name__ == '__main__':
     _p('   같은 PC : http://127.0.0.1:%d  (브라우저로 열면 게임이 바로 실행됩니다)' % PORT)
     _p('=' * 52)
     _p('종료하려면 Ctrl+C')
-    try:
-        ThreadedHTTP((HOST, PORT), Handler).serve_forever()
-    except KeyboardInterrupt:
-        _p('\n서버를 종료합니다.')
-    except OSError as e:
-        if getattr(e, 'errno', None) == 98:
-            _p('')
-            _p('[오류] 포트 %d 를 이미 다른 프로세스가 사용 중입니다!' % PORT)
-            _p('  이전에 켜둔 서버가 아직 실행 중일 가능성이 큽니다.')
-            _p('  아래 명령으로 종료 후 다시 실행하세요:')
-            _p('    fuser -k %d/tcp' % PORT)
-            _p('  또는:')
-            _p('    pkill -f server.py')
-        else:
-            raise
+    while True:
+        try:
+            ThreadedHTTP((HOST, PORT), Handler).serve_forever()
+        except KeyboardInterrupt:
+            _p('\n서버를 종료합니다.')
+            break
+        except OSError as e:
+            if getattr(e, 'errno', None) == 98:
+                _p('')
+                _p('[오류] 포트 %d 를 이미 다른 프로세스가 사용 중입니다!' % PORT)
+                _p('  이전에 켜둔 서버가 아직 실행 중일 가능성이 큽니다.')
+                _p('  아래 명령으로 종료 후 다시 실행하세요:')
+                _p('    fuser -k %d/tcp' % PORT)
+                _p('  또는:')
+                _p('    pkill -f server.py')
+            else:
+                raise
+            break
+        except Exception as e:
+            _p('[서버 오류] %r — 3초 후 자동 재시작' % (e,))
+            time.sleep(3)

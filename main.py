@@ -21,7 +21,7 @@ def load_config():
         with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
             return json.load(f)
     return {
-        "TOKEN": "YOUR_BOT_TOKEN_HERE",
+        "TOKEN": " ",
         "guilds": {},
         "warnings": {},
         "muted_users": {}
@@ -962,6 +962,155 @@ async def coinshop(ctx):
                         color=discord.Color.purple())
     emb.set_footer(text=f"보유: 💎 {u['coins']} 코인")
     await ctx.send(embed=emb, view=CoinShopView(ctx.author.id))
+
+# ── 💱 골드 ↔ 코인 상호 환전 ──
+@bot.command(name='환전', description='골드 ↔ 코인 상호 환전')
+async def exchange(ctx, type_: str = None, amount: int = None):
+    """
+    사용법:
+    `!환전 골드 1000` → 골드(현금) 1000원 → 코인으로 환전 (비율: 100원 = 1코인)
+    `!환전 코인 10` → 코인 10개 → 골드(현금)로 환전 (비율: 1코인 = 100원)
+    """
+    if not type_ or not amount:
+        emb = discord.Embed(
+            title="💱 환전 안내",
+            description="`!환전 골드 1000` - 1000원 → 코인으로 (비율: 100원 = 1💎)\n`!환전 코인 10` - 10💎 → 1000원으로",
+            color=discord.Color.blurple()
+        )
+        return await ctx.send(embed=emb)
+    
+    type_ = type_.lower()
+    u = _u(ctx.author.id)
+    
+    if type_ == "골드":
+        # 골드(현금) → 코인 (100원 = 1코인)
+        if amount < 100:
+            return await ctx.send("❌ 최소 100원부터 환전 가능합니다!")
+        if u["money"] < amount:
+            return await ctx.send(f"❌ 골드 부족! 보유: {_fmt(u['money'])}원")
+        
+        coin_gain = amount // 100
+        u["money"] -= amount
+        u["coins"] += coin_gain
+        _esave(ECON)
+        
+        emb = discord.Embed(
+            title="💱 환전 완료!",
+            description=f"💰 **{_fmt(amount)}원** → 💎 **{coin_gain}개** 변환됨!",
+            color=discord.Color.gold()
+        )
+        emb.add_field(name="남은 골드", value=f"{_fmt(u['money'])}원", inline=True)
+        emb.add_field(name="현재 코인", value=f"💎 {u['coins']}개", inline=True)
+        await ctx.send(embed=emb)
+    
+    elif type_ == "코인":
+        # 코인 → 골드(현금) (1코인 = 100원)
+        if amount < 1:
+            return await ctx.send("❌ 최소 1개부터 환전 가능합니다!")
+        if u["coins"] < amount:
+            return await ctx.send(f"❌ 코인 부족! 보유: 💎 {u['coins']}개")
+        
+        gold_gain = amount * 100
+        u["coins"] -= amount
+        u["money"] += gold_gain
+        _esave(ECON)
+        
+        emb = discord.Embed(
+            title="💱 환전 완료!",
+            description=f"💎 **{amount}개** → 💰 **{_fmt(gold_gain)}원** 변환됨!",
+            color=discord.Color.gold()
+        )
+        emb.add_field(name="현재 골드", value=f"{_fmt(u['money'])}원", inline=True)
+        emb.add_field(name="남은 코인", value=f"💎 {u['coins']}개", inline=True)
+        await ctx.send(embed=emb)
+    
+    else:
+        await ctx.send("❌ '골드' 또는 '코인'을 입력하세요!")
+
+# ── 👑 나만 쓸 수 있는 관리자 명령어: 지급 ──
+# 여기에 본인 유저 ID를 입력하세요!
+ADMIN_ID = 1456231020482265101 # 🔴 본인 디스코드 ID로 변경 필요
+
+@bot.command(name='지급', description='[관리자만] 사용자에게 골드/코인을 지급합니다')
+async def give(ctx, type_: str = None, member: discord.Member = None, amount: int = None):
+    """
+    사용법:
+    `!지급 골드 @사용자 10000` - 사용자에게 골드 10000원 지급
+    `!지급 코인 @사용자 50` - 사용자에게 코인 50개 지급
+    """
+    # 관리자 권한 체크 (본인 ID만)
+    if ctx.author.id != ADMIN_ID:
+        emb = discord.Embed(
+            title="❌ 권한 없음",
+            description="이 명령어는 관리자만 사용할 수 있습니다!",
+            color=discord.Color.red()
+        )
+        return await ctx.send(embed=emb, delete_after=5)
+    
+    if not type_ or not member or not amount:
+        return await ctx.send("사용법: `!지급 골드 @사용자 10000` 또는 `!지급 코인 @사용자 50`")
+    
+    if amount < 1:
+        return await ctx.send("❌ 1개 이상의 양을 지급해야 합니다!")
+    
+    type_ = type_.lower()
+    target_user = _u(member.id)
+    admin_user = _u(ctx.author.id)
+    
+    if type_ == "골드":
+        target_user["money"] += amount
+        _esave(ECON)
+        
+        emb = discord.Embed(
+            title="💰 골드 지급 완료!",
+            description=f"{member.mention}님에게 **{_fmt(amount)}원** 지급됨!",
+            color=discord.Color.gold()
+        )
+        emb.add_field(name="수령자 잔고", value=f"{_fmt(target_user['money'])}원", inline=False)
+        emb.add_field(name="지급자", value=f"{ctx.author.mention}", inline=False)
+        await ctx.send(embed=emb)
+        
+        # DM으로도 알림
+        try:
+            dm_emb = discord.Embed(
+                title="💰 골드 수령!",
+                description=f"**{_fmt(amount)}원**의 골드를 받았습니다!",
+                color=discord.Color.gold()
+            )
+            dm_emb.add_field(name="현재 잔고", value=f"{_fmt(target_user['money'])}원", inline=False)
+            dm_emb.set_footer(text="만물상 RPG 관리자로부터")
+            await member.send(embed=dm_emb)
+        except:
+            pass  # DM 전송 실패해도 무시
+    
+    elif type_ == "코인":
+        target_user["coins"] += amount
+        _esave(ECON)
+        
+        emb = discord.Embed(
+            title="💎 코인 지급 완료!",
+            description=f"{member.mention}님에게 **💎 {amount}개** 지급됨!",
+            color=discord.Color.purple()
+        )
+        emb.add_field(name="수령자 잔고", value=f"💎 {target_user['coins']}개", inline=False)
+        emb.add_field(name="지급자", value=f"{ctx.author.mention}", inline=False)
+        await ctx.send(embed=emb)
+        
+        # DM으로도 알림
+        try:
+            dm_emb = discord.Embed(
+                title="💎 코인 수령!",
+                description=f"**💎 {amount}개**의 코인을 받았습니다!",
+                color=discord.Color.purple()
+            )
+            dm_emb.add_field(name="현재 잔고", value=f"💎 {target_user['coins']}개", inline=False)
+            dm_emb.set_footer(text="만물상 RPG 관리자로부터")
+            await member.send(embed=dm_emb)
+        except:
+            pass  # DM 전송 실패해도 무시
+    
+    else:
+        await ctx.send("❌ '골드' 또는 '코인'을 입력하세요!")
 
 
 # ============ 봇 실행 ============

@@ -9588,7 +9588,8 @@ async function pvpOpen(){
   PVP.searching = true;
   const btn = document.getElementById('pvpBtn');
   if(btn) btn.textContent = '🔍 매칭 취소';
-  log('<span style="color:#e94560">⚔️ PvP 매칭 시작 — 대전 상대를 찾는 중... (버튼 다시 누르면 취소)</span>');
+  log('<span style="color:#e94560">⚔️ PvP 매칭 시작 — 상대도 PvP 버튼을 눌러야 매칭됩니다! (서로 다른 닉네임 필요 · 버튼 다시 누르면 취소)</span>');
+  PVP.failCnt = 0; PVP.waitSec = 0;
   const tryJoin = async () => {
     if(!PVP.searching) return;
     let r = null;
@@ -9598,7 +9599,29 @@ async function pvpOpen(){
     }catch(e){}
     if(!PVP.searching) return;
     if(r && r.ok && r.matched){ pvpStart(r); return; }
-    if(r === null){ log('<span style="color:var(--red)">⚔️ 서버 연결 안 됨 — 매칭 취소</span>'); pvpQuit(); }
+    if(r && r.ok){
+      // 정상 대기 중
+      PVP.failCnt = 0;
+      PVP.waitSec += 2;
+      const b = document.getElementById('pvpBtn');
+      if(b) b.textContent = '🔍 매칭 중 ' + PVP.waitSec + '초 (대기 ' + ((r.waiting||1)) + '명) — 취소';
+      return;
+    }
+    if(r && !r.ok){
+      // 서버가 응답은 하는데 PvP를 모름 = 구버전 server.py
+      const msg = r.error === 'unknown_endpoint'
+        ? '서버가 구버전입니다 — 서버에 새 server.py를 올리고 재시작해야 PvP가 됩니다!'
+        : (r.error === 'not_owner' ? '이 닉네임의 소유자가 아닙니다.' : '서버 오류: ' + (r.error||'?'));
+      log('<span style="color:var(--red)">⚔️ ' + msg + '</span>');
+      alert('⚔️ PvP 매칭 실패\n\n' + msg);
+      pvpQuit(); return;
+    }
+    // r === null : 일시적 연결 끊김 — 3회 연속이면 취소
+    PVP.failCnt++;
+    if(PVP.failCnt >= 3){
+      log('<span style="color:var(--red)">⚔️ 서버 연결 안 됨 — 매칭 취소</span>');
+      pvpQuit();
+    }
   };
   tryJoin();
   PVP.joinTimer = setInterval(tryJoin, 2000);

@@ -328,6 +328,15 @@ def init_db():
             rank INTEGER NOT NULL DEFAULT 1,   -- 1신입 2인턴 3만물상감시자 4차원감독관 5균열관리자 6부개발자 7개발자
             granted_by TEXT DEFAULT '',
             ts INTEGER NOT NULL);
+
+        -- 💾 유저 세이브 서버 보관 (서버 초기화 복구용)
+        CREATE TABLE IF NOT EXISTS saves(
+            nick TEXT PRIMARY KEY,
+            token TEXT DEFAULT '',
+            data TEXT NOT NULL,
+            power REAL DEFAULT 0,
+            stage INTEGER DEFAULT 1,
+            ts INTEGER NOT NULL);
         ''')
         # 기존 DB 호환: 없는 컬럼 자동 추가
         for tbl, col, decl in [('mail', 'item_json', "TEXT DEFAULT ''"),
@@ -698,6 +707,135 @@ def settle_auctions(c):
     for r in rows:
         close_auction(c, r['id'])
     return len(rows)
+
+
+# ============================== 💾 자동 백업 & 복구 ==============================
+import random as _rd
+
+BACKUP_DIR = os.path.join(os.path.dirname(os.path.abspath(DB_PATH)) or '.', 'backups')
+BACKUP_EVERY = 30 * 60      # 30분마다
+BACKUP_KEEP = 60            # 최근 60개 보관 (30시간 분량)
+
+def do_backup():
+    try:
+        os.makedirs(BACKUP_DIR, exist_ok=True)
+        fname = time.strftime('rift_%Y%m%d_%H%M%S.db')
+        dst = os.path.join(BACKUP_DIR, fname)
+        src = sqlite3.connect(DB_PATH)
+        out = sqlite3.connect(dst)
+        with out:
+            src.backup(out)
+        out.close(); src.close()
+        files = sorted(f for f in os.listdir(BACKUP_DIR)
+                       if f.startswith('rift_') and f.endswith('.db'))
+        for f in files[:-BACKUP_KEEP]:
+            try: os.remove(os.path.join(BACKUP_DIR, f))
+            except Exception: pass
+        return fname
+    except Exception as e:
+        print('[백업 실패]', e)
+        return None
+
+def backup_loop():
+    while True:
+        time.sleep(BACKUP_EVERY)
+        do_backup()
+
+def list_backups():
+    try:
+        os.makedirs(BACKUP_DIR, exist_ok=True)
+        out = []
+        for f in sorted(os.listdir(BACKUP_DIR), reverse=True):
+            if not (f.startswith('rift_') and f.endswith('.db')):
+                continue
+            p = os.path.join(BACKUP_DIR, f)
+            st = os.stat(p)
+            out.append({'file': f, 'size': st.st_size, 'ts': int(st.st_mtime)})
+        return out[:BACKUP_KEEP]
+    except Exception:
+        return []
+
+def restore_from_backup(c, fname):
+    """백업 DB의 유저 데이터를 현재 DB에 '병합' 복구.
+    - saves: 없는 유저는 추가, 백업이 더 최신이면 교체
+    - ranking/players/guilds/guild_members/nick_owner/admin_ranks: 없는 행만 추가
+    - mail: 안 받은(taken=0) 우편 중 없는 것 추가
+    현재 데이터는 절대 삭제하지 않는다."""
+    if '/' in fname or '\\' in fname or '..' in fname:
+        return {'ok': False, 'error': 'bad_name'}
+    path = os.path.join(BACKUP_DIR, fname)
+    if not os.path.isfile(path):
+        return {'ok': False, 'error': 'not_found'}
+    b = sqlite3.connect('file:%s?mode=ro' % path, uri=True)
+    b.row_factory = sqlite3.Row
+    stat = {}
+    def has_table(name):
+        return b.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",
+                         (name,)).fetchone() is not None
+    try:
+        if has_table('saves'):
+            n = 0
+            for r in b.execute('SELECT nick,token,data,power,stage,ts FROM saves'):
+                cur = c.execute('SELECT ts FROM saves WHERE nick=?', (r['nick'],)).fetchone()
+                if cur is None or (cur['ts'] or 0) < (r['ts'] or 0):
+                    c.execute('INSERT INTO saves(nick,token,data,power,stage,ts) VALUES(?,?,?,?,?,?) '
+                              'ON CONFLICT(nick) DO UPDATE SET token=excluded.token, data=excluded.data,'
+                              'power=excluded.power, stage=excluded.stage, ts=excluded.ts',
+                              (r['nick'], r['token'], r['data'], r['power'], r['stage'], r['ts']))
+                    n += 1
+            stat['세이브'] = n
+        merge = {
+            'ranking': ('랭킹', 'nick,power,stage,level,tier,ts'),
+            'players': ('플레이어', 'nick,last_seen,stage,level,guild'),
+            'guilds': ('길드', 'name,owner,notice,score,raid_score,ts'),
+            'guild_members': ('길드원', 'guild,nick,ts'),
+            'nick_owner': ('닉네임소유권', 'nick,token,ts'),
+            'admin_ranks': ('관리자등급', 'nick,rank,granted_by,ts'),
+        }
+        for tbl, (ko, cols) in merge.items():
+            if not has_table(tbl):
+                continue
+            n = 0
+            ph = ','.join('?' * len(cols.split(',')))
+            for r in b.execute('SELECT %s FROM %s' % (cols, tbl)):
+                cu = c.execute('INSERT OR IGNORE INTO %s(%s) VALUES(%s)' % (tbl, cols, ph), tuple(r))
+                n += cu.rowcount
+            stat[ko] = n
+        if has_table('mail'):
+            n = 0
+            for r in b.execute('SELECT receiver,sender,subject,body,gold,item_json,ts FROM mail WHERE taken=0'):
+                dup = c.execute('SELECT 1 FROM mail WHERE receiver=? AND sender=? AND subject=? AND ts=?',
+                                (r['receiver'], r['sender'], r['subject'], r['ts'])).fetchone()
+                if not dup:
+                    c.execute('INSERT INTO mail(receiver,sender,subject,body,gold,item_json,taken,ts) '
+                              'VALUES(?,?,?,?,?,?,0,?)',
+                              (r['receiver'], r['sender'], r['subject'], r['body'],
+                               r['gold'], r['item_json'], r['ts']))
+                    n += 1
+            stat['우편'] = n
+    finally:
+        b.close()
+    return {'ok': True, 'restored': stat, 'file': fname}
+
+
+# ============================== ⚔️ PvP 실시간 대전 ==============================
+PVP_QUEUE = []       # [{nick, power, loadout, ts, enq}]
+PVP_MATCHES = {}     # id -> match
+PVP_SEQ = [0]
+
+def _pvp_clean():
+    t = now()
+    PVP_QUEUE[:] = [q for q in PVP_QUEUE if t - q['ts'] < 90]
+    dead = [mid for mid, m in PVP_MATCHES.items()
+            if (m['winner'] and t - m['won_ts'] > 60) or t - m['ts'] > 900]
+    for mid in dead:
+        PVP_MATCHES.pop(mid, None)
+
+def _pvp_match_of(nick):
+    for mid, m in PVP_MATCHES.items():
+        if not m['winner'] and nick in m['p']:
+            return mid, m
+    return None, None
 
 
 # ============================== API ==============================
@@ -1343,6 +1481,170 @@ def api(path, q, body):
                       "ON CONFLICT(k) DO UPDATE SET v=?", (str(now()), str(now())))
             return {'ok': True}
 
+        # ---------- 💾 세이브 서버 보관 ----------
+        if path == '/save/upload':
+            nick = str(P('nick', ''))[:20].strip()
+            token = str(P('token', ''))[:64].strip()
+            data = P('data', '')
+            if not isinstance(data, str):
+                data = json.dumps(data, ensure_ascii=False)
+            if not nick or not data:
+                return {'ok': False, 'error': 'empty'}
+            if len(data) > 800000:
+                return {'ok': False, 'error': 'too_big'}
+            row = c.execute('SELECT token FROM nick_owner WHERE nick=?', (nick,)).fetchone()
+            if row and row['token'] and token and row['token'] != token:
+                return {'ok': False, 'error': 'not_owner'}
+            c.execute('INSERT INTO saves(nick,token,data,power,stage,ts) VALUES(?,?,?,?,?,?) '
+                      'ON CONFLICT(nick) DO UPDATE SET data=excluded.data, power=excluded.power,'
+                      'stage=excluded.stage, ts=excluded.ts',
+                      (nick, token, data, float(P('power', 0) or 0), int(P('stage', 1) or 1), now()))
+            return {'ok': True}
+
+        if path == '/save/download':
+            nick = str(P('nick', ''))[:20].strip()
+            token = str(P('token', ''))[:64].strip()
+            r = c.execute('SELECT data,ts,stage,power FROM saves WHERE nick=?', (nick,)).fetchone()
+            if not r:
+                return {'ok': False, 'error': 'no_save'}
+            own = c.execute('SELECT token FROM nick_owner WHERE nick=?', (nick,)).fetchone()
+            if own and own['token'] and token and own['token'] != token:
+                return {'ok': False, 'error': 'not_owner'}
+            return {'ok': True, 'data': r['data'], 'ts': r['ts'],
+                    'stage': r['stage'], 'power': r['power']}
+
+        # ---------- 💾 관리자 백업/복구 ----------
+        if path == '/admin/backup/list':
+            if str(P('pass', '')) != ADMIN_PASSWORD:
+                return {'ok': False, 'error': 'auth'}
+            return {'ok': True, 'backups': list_backups(),
+                    'saved_users': c.execute('SELECT COUNT(*) n FROM saves').fetchone()['n']}
+
+        if path == '/admin/backup/now':
+            if str(P('pass', '')) != ADMIN_PASSWORD:
+                return {'ok': False, 'error': 'auth'}
+            f = do_backup()
+            return {'ok': bool(f), 'file': f}
+
+        if path == '/admin/backup/restore':
+            if str(P('pass', '')) != ADMIN_PASSWORD:
+                return {'ok': False, 'error': 'auth'}
+            return restore_from_backup(c, str(P('file', '')))
+
+        # ---------- ⚔️ PvP ----------
+        if path == '/pvp/join':
+            _pvp_clean()
+            nick = str(P('nick', ''))[:20].strip()
+            token = str(P('token', ''))[:64].strip()
+            if not nick:
+                return {'ok': False, 'error': 'no_nick'}
+            own = c.execute('SELECT token FROM nick_owner WHERE nick=?', (nick,)).fetchone()
+            if own and own['token'] and token and own['token'] != token:
+                return {'ok': False, 'error': 'not_owner'}
+            mid, m = _pvp_match_of(nick)
+            if m:
+                opp = [n for n in m['p'] if n != nick][0]
+                return {'ok': True, 'matched': True, 'match': mid,
+                        'opp': m['p'][opp]['loadout'], 'opp_power': m['p'][opp]['power']}
+            power = max(1.0, float(P('power', 1) or 1))
+            loadout = P('loadout', {})
+            if isinstance(loadout, str):
+                try: loadout = json.loads(loadout)
+                except Exception: loadout = {}
+            me = None
+            for q in PVP_QUEUE:
+                if q['nick'] == nick:
+                    q['power'] = power; q['loadout'] = loadout; me = q
+                    break
+            if me is None:
+                me = {'nick': nick, 'power': power, 'loadout': loadout,
+                      'ts': now(), 'enq': now()}
+                PVP_QUEUE.append(me)
+            me['ts'] = now()
+            waited = now() - me.get('enq', now())
+            tol = min(0.95, 0.35 + waited * 0.012)   # 기다릴수록 매칭 범위 확대
+            best = None
+            for q in PVP_QUEUE:
+                if q['nick'] == nick:
+                    continue
+                gap = abs(q['power'] - power) / max(q['power'], power, 1.0)
+                if gap <= tol and (best is None or gap < best[0]):
+                    best = (gap, q)
+            if best:
+                q = best[1]
+                PVP_QUEUE[:] = [x for x in PVP_QUEUE if x['nick'] not in (nick, q['nick'])]
+                PVP_SEQ[0] += 1
+                mid = 'm%d_%d' % (now(), PVP_SEQ[0])
+                PVP_MATCHES[mid] = {
+                    'p': {nick: {'hp': 100.0, 'power': power, 'loadout': loadout,
+                                 'last_atk': 0, 'seen': now()},
+                          q['nick']: {'hp': 100.0, 'power': q['power'], 'loadout': q['loadout'],
+                                      'last_atk': 0, 'seen': now()}},
+                    'actions': [], 'seq': 0, 'winner': '', 'won_ts': 0, 'ts': now()}
+                return {'ok': True, 'matched': True, 'match': mid,
+                        'opp': q['loadout'], 'opp_power': q['power']}
+            return {'ok': True, 'matched': False, 'waiting': len(PVP_QUEUE)}
+
+        if path == '/pvp/leave':
+            nick = str(P('nick', ''))[:20].strip()
+            PVP_QUEUE[:] = [q for q in PVP_QUEUE if q['nick'] != nick]
+            mid, m = _pvp_match_of(nick)
+            if m:
+                opp = [n for n in m['p'] if n != nick][0]
+                m['winner'] = opp; m['won_ts'] = now(); m['forfeit'] = True
+            return {'ok': True}
+
+        if path == '/pvp/action':
+            mid = str(P('match', ''))
+            nick = str(P('nick', ''))[:20].strip()
+            m = PVP_MATCHES.get(mid)
+            if not m or nick not in m['p']:
+                return {'ok': False, 'error': 'no_match'}
+            if m['winner']:
+                return {'ok': True, 'winner': m['winner'],
+                        'hp': {n: p['hp'] for n, p in m['p'].items()}}
+            me = m['p'][nick]
+            opp_nick = [n for n in m['p'] if n != nick][0]
+            opp = m['p'][opp_nick]
+            t_ms = time.time() * 1000
+            if t_ms - me['last_atk'] < 110:      # 서버측 연타(매크로) 제한
+                return {'ok': True, 'ignored': True, 'opp_hp': opp['hp'],
+                        'winner': m['winner'], 'seq': m['seq']}
+            me['last_atk'] = t_ms; me['seen'] = now()
+            # 데미지: 전투력 비율 기반 % 데미지 (매칭이 비슷해서 1.6~9% 사이)
+            ratio = (me['power'] / max(1.0, opp['power'])) ** 0.5
+            dmg = max(1.6, min(9.0, 4.0 * ratio))
+            crit = _rd.random() < 0.15
+            if crit:
+                dmg *= 1.8
+            dmg = round(dmg, 2)
+            opp['hp'] = max(0.0, opp['hp'] - dmg)
+            m['seq'] += 1
+            m['actions'].append({'seq': m['seq'], 'by': nick, 'dmg': dmg,
+                                 'crit': crit, 'hp': opp['hp']})
+            if len(m['actions']) > 120:
+                m['actions'] = m['actions'][-120:]
+            if opp['hp'] <= 0:
+                m['winner'] = nick; m['won_ts'] = now()
+            return {'ok': True, 'dmg': dmg, 'crit': crit, 'opp_hp': opp['hp'],
+                    'winner': m['winner'], 'seq': m['seq']}
+
+        if path == '/pvp/state':
+            mid = str(P('match', ''))
+            nick = str(P('nick', ''))[:20].strip()
+            since = int(P('since', 0) or 0)
+            m = PVP_MATCHES.get(mid)
+            if not m or nick not in m['p']:
+                return {'ok': False, 'error': 'no_match'}
+            m['p'][nick]['seen'] = now()
+            opp_nick = [n for n in m['p'] if n != nick][0]
+            if not m['winner'] and now() - m['p'][opp_nick]['seen'] > 12:
+                m['winner'] = nick; m['won_ts'] = now(); m['forfeit'] = True   # 상대 이탈 = 몰수승
+            acts = [a for a in m['actions'] if a['seq'] > since]
+            return {'ok': True, 'hp': {n: p['hp'] for n, p in m['p'].items()},
+                    'actions': acts, 'seq': m['seq'], 'winner': m['winner'],
+                    'forfeit': bool(m.get('forfeit'))}
+
         if path == '/ping':
             # 클라이언트가 접속에 쓸 주소를 서버가 직접 알려준다
             # (EXE/브라우저 어느 쪽에서 접속해도 올바른 주소를 잡도록)
@@ -1531,12 +1833,15 @@ def start_background():
 
 if __name__ == '__main__':
     init_db()
+    do_backup()   # 시작 직후 1회 백업
+    threading.Thread(target=backup_loop, daemon=True).start()
     _p('=' * 52)
     _p('[SERVER] 차원 균열의 만물상 - 온라인 서버')
     _p(f'   바인딩 : {HOST}:{PORT}')
     _p(f'   DB     : {DB_PATH}')
     _p(f'   정적파일: {STATIC_DIR} (index.html 을 여기 두세요)')
     _p(f'   속도제한: IP당 10초 {RATE_LIMIT}회')
+    _p(f'   자동백업: {BACKUP_DIR} (30분마다, 최근 {BACKUP_KEEP}개 보관)')
     try:
         import socket as _sk
         s = _sk.socket(_sk.AF_INET, _sk.SOCK_DGRAM)
@@ -1569,4 +1874,4 @@ if __name__ == '__main__':
         except Exception as e:
             _p('[서버 오류] %r — 3초 후 자동 재시작' % (e,))
             time.sleep(3)
- 
+

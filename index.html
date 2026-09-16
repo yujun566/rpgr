@@ -9588,7 +9588,7 @@ async function pvpOpen(){
   PVP.searching = true;
   const btn = document.getElementById('pvpBtn');
   if(btn) btn.textContent = '🔍 매칭 취소';
-  log('<span style="color:#e94560">⚔️ PvP 매칭 시작 — 전투력 비슷한 상대를 찾는 중... (버튼 다시 누르면 취소)</span>');
+  log('<span style="color:#e94560">⚔️ PvP 매칭 시작 — 대전 상대를 찾는 중... (버튼 다시 누르면 취소)</span>');
   const tryJoin = async () => {
     if(!PVP.searching) return;
     let r = null;

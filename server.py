@@ -1561,15 +1561,13 @@ def api(path, q, body):
                       'ts': now(), 'enq': now()}
                 PVP_QUEUE.append(me)
             me['ts'] = now()
-            waited = now() - me.get('enq', now())
-            tol = min(0.95, 0.35 + waited * 0.012)   # 기다릴수록 매칭 범위 확대
+            # 전투력 제한 없음 — 대기 중인 상대가 있으면 바로 매칭
             best = None
             for q in PVP_QUEUE:
                 if q['nick'] == nick:
                     continue
-                gap = abs(q['power'] - power) / max(q['power'], power, 1.0)
-                if gap <= tol and (best is None or gap < best[0]):
-                    best = (gap, q)
+                best = (0, q)
+                break
             if best:
                 q = best[1]
                 PVP_QUEUE[:] = [x for x in PVP_QUEUE if x['nick'] not in (nick, q['nick'])]

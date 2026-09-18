@@ -3763,7 +3763,7 @@ async function showMailGUI(){
   const r = (typeof NET!=='undefined' && NET.isOnline() && S && S.nickname)
             ? await NET.req('/mail/list', {nick:S.nickname}) : null;
   let h;
-  if(!r || !r.ok){ h = '<div style="color:var(--mut);text-align:center;padding:20px">서버 미연결</div>'; }
+  if(!r || !r.ok){ h = '<div style="color:var(--red);text-align:center;padding:20px;font-size:12px;line-height:1.7">' + (r ? '⚠️ 서버가 <b>구버전</b>입니다!<br>서버에 새 <b>server.py</b>를 올리고 재시작해야<br>친구·파티·음성·클랜전·PvP가 작동합니다.' : '서버 연결 안 됨 (서버 꺼짐/주소 확인)') + '</div>'; }
   else if(!r.mails.length){ h = '<div style="color:var(--mut);text-align:center;padding:20px">우편이 없습니다</div>'; }
   else {
     h = '<button class="buy" style="width:100%;margin-bottom:8px" onclick="guiTakeAllMail()">📥 전체 수령</button>' +
@@ -3807,7 +3807,7 @@ async function showBossGUI(){
           {color:'#ff5470'});
   const r = (typeof NET!=='undefined' && NET.isOnline()) ? await NET.req('/boss/state', {}) : null;
   let h;
-  if(!r || !r.ok){ h = '<div style="color:var(--mut);text-align:center;padding:20px">서버 미연결</div>'; }
+  if(!r || !r.ok){ h = '<div style="color:var(--red);text-align:center;padding:20px;font-size:12px;line-height:1.7">' + (r ? '⚠️ 서버가 <b>구버전</b>입니다!<br>서버에 새 <b>server.py</b>를 올리고 재시작해야<br>친구·파티·음성·클랜전·PvP가 작동합니다.' : '서버 연결 안 됨 (서버 꺼짐/주소 확인)') + '</div>'; }
   else {
     const b = r.boss, pct = safePct(b.hp, b.max_hp);
     h = '<div style="text-align:center;margin-bottom:10px">'+
@@ -10025,7 +10025,7 @@ async function showFriendsGUI(){
   openGUI('👥 친구', '<div style="color:var(--mut);text-align:center;padding:20px">불러오는 중...</div>', {color:'#43e6cf'});
   const r = await NET.req('/friend/list', {nick:S.nickname});
   let h;
-  if(!r || !r.ok){ h = '<div style="color:var(--mut);text-align:center;padding:20px">서버 미연결</div>'; }
+  if(!r || !r.ok){ h = '<div style="color:var(--red);text-align:center;padding:20px;font-size:12px;line-height:1.7">' + (r ? '⚠️ 서버가 <b>구버전</b>입니다!<br>서버에 새 <b>server.py</b>를 올리고 재시작해야<br>친구·파티·음성·클랜전·PvP가 작동합니다.' : '서버 연결 안 됨 (서버 꺼짐/주소 확인)') + '</div>'; }
   else {
     FR_LIST = r.friends || [];
     h = FR_LIST.length ? FR_LIST.map((f,i)=>
@@ -10056,7 +10056,7 @@ async function showPartyGUI(){
   openGUI('🎉 파티', '<div style="color:var(--mut);text-align:center;padding:20px">불러오는 중...</div>', {color:'#ffd23f'});
   const r = await NET.req('/party/state', {nick:S.nickname});
   let h;
-  if(!r || !r.ok){ h = '<div style="color:var(--mut);text-align:center;padding:20px">서버 미연결</div>'; }
+  if(!r || !r.ok){ h = '<div style="color:var(--red);text-align:center;padding:20px;font-size:12px;line-height:1.7">' + (r ? '⚠️ 서버가 <b>구버전</b>입니다!<br>서버에 새 <b>server.py</b>를 올리고 재시작해야<br>친구·파티·음성·클랜전·PvP가 작동합니다.' : '서버 연결 안 됨 (서버 꺼짐/주소 확인)') + '</div>'; }
   else if(!r.party){
     h = '<div style="text-align:center;padding:14px">'+
       '<div style="color:var(--mut);font-size:12px;margin-bottom:10px">파티가 없습니다</div>'+
@@ -10288,7 +10288,7 @@ async function showPvpRankGUI(){
   openGUI('🏆 PvP 랭킹', '<div style="color:var(--mut);text-align:center;padding:20px">불러오는 중...</div>', {color:'#ffd23f'});
   const r = await NET.req('/pvp/rank', {});
   let h;
-  if(!r || !r.ok){ h = '<div style="color:var(--mut);text-align:center;padding:20px">서버 미연결</div>'; }
+  if(!r || !r.ok){ h = '<div style="color:var(--red);text-align:center;padding:20px;font-size:12px;line-height:1.7">' + (r ? '⚠️ 서버가 <b>구버전</b>입니다!<br>서버에 새 <b>server.py</b>를 올리고 재시작해야<br>친구·파티·음성·클랜전·PvP가 작동합니다.' : '서버 연결 안 됨 (서버 꺼짐/주소 확인)') + '</div>'; }
   else if(!r.rank || !r.rank.length){ h = '<div style="color:var(--mut);text-align:center;padding:20px">아직 PvP 기록이 없습니다<br><span style="font-size:11px">첫 승리의 주인공이 되어보세요!</span></div>'; }
   else {
     h = r.rank.map((p,i)=>{

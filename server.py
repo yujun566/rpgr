@@ -60,7 +60,15 @@ API_PATHS = {
     '/admin/cmd', '/admin/pending', '/admin/ban', '/admin/unban',
     '/admin/rank/set', '/admin/rank/list', '/admin/rank/get',
     '/purchase/request', '/purchase/list', '/purchase/approve', '/purchase/reject', '/purchase/mine',
+    '/friend/list', '/friend/remove', '/invite/send', '/invite/poll', '/invite/respond',
+    '/party/state', '/party/create', '/party/leave',
+    '/guild/relation/set', '/guild/relation/list', '/clanwar/list',
+    '/pvp/rank', '/pvp/mymatch', '/pvp/join', '/pvp/leave', '/pvp/action', '/pvp/state',
+    '/rtc/send', '/rtc/poll',
+    '/save/upload', '/save/download',
+    '/admin/backup/list', '/admin/backup/now', '/admin/backup/restore',
 }
+SERVER_VER = 3   # 소셜(친구/파티/음성/클랜전/PvP/백업) 지원 버전
 
 # index.html 등 정적 파일을 찾을 폴더 (기본: server.py 와 같은 폴더)
 STATIC_DIR = os.environ.get('RIFT_STATIC_DIR') or os.path.dirname(os.path.abspath(__file__))
@@ -2044,7 +2052,7 @@ def api(path, q, body):
                 s.close()
             except Exception:
                 pass
-            return {'ok': True, 'server': 'rift', 'time': now(),
+            return {'ver': SERVER_VER, 'ok': True, 'server': 'rift', 'time': now(),
                     'port': PORT, 'lan_url': lan,
                     'local_url': 'http://127.0.0.1:%d' % PORT}
 

@@ -329,6 +329,41 @@ def init_db():
             granted_by TEXT DEFAULT '',
             ts INTEGER NOT NULL);
 
+        -- 👥 친구
+        CREATE TABLE IF NOT EXISTS friends(
+            a TEXT NOT NULL, b TEXT NOT NULL, ts INTEGER NOT NULL,
+            PRIMARY KEY(a, b));
+
+        -- 📨 초대/신청 (friend·party·duel·guild·joinreq·clanwar)
+        CREATE TABLE IF NOT EXISTS invites(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            type TEXT NOT NULL,
+            from_nick TEXT NOT NULL, to_nick TEXT NOT NULL,
+            data TEXT DEFAULT '{}', status TEXT DEFAULT 'pending',
+            resp_ts INTEGER DEFAULT 0, ts INTEGER NOT NULL);
+        CREATE INDEX IF NOT EXISTS idx_inv_to ON invites(to_nick, status);
+
+        -- 🏰 클랜 관계 (동맹/적대)  g1<g2 정렬 저장
+        CREATE TABLE IF NOT EXISTS guild_relations(
+            g1 TEXT NOT NULL, g2 TEXT NOT NULL,
+            type TEXT NOT NULL,            -- ally_pending / ally / enemy
+            req TEXT DEFAULT '',           -- 동맹을 신청한 길드
+            ts INTEGER NOT NULL,
+            PRIMARY KEY(g1, g2));
+
+        -- 📅 클랜전 (예약제)
+        CREATE TABLE IF NOT EXISTS clan_wars(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            g1 TEXT NOT NULL, g2 TEXT NOT NULL,
+            date INTEGER NOT NULL, status TEXT DEFAULT 'scheduled',
+            score1 REAL DEFAULT 0, score2 REAL DEFAULT 0,
+            winner TEXT DEFAULT '', ts INTEGER NOT NULL);
+
+        -- 🏆 PvP 전적
+        CREATE TABLE IF NOT EXISTS pvp_stats(
+            nick TEXT PRIMARY KEY, wins INTEGER DEFAULT 0,
+            losses INTEGER DEFAULT 0, ts INTEGER NOT NULL);
+
         -- 💾 유저 세이브 서버 보관 (서버 초기화 복구용)
         CREATE TABLE IF NOT EXISTS saves(
             nick TEXT PRIMARY KEY,
@@ -818,6 +853,74 @@ def restore_from_backup(c, fname):
     return {'ok': True, 'restored': stat, 'file': fname}
 
 
+# ============================== 🎉 파티 & 🎤 음성 시그널링 ==============================
+PARTIES = {}      # id -> {id, owner, members:[nick], ts}
+PARTY_SEQ = [0]
+RTC = {}          # room -> [{id, from, to, payload, ts}]
+RTC_SEQ = [0]
+
+def _party_of(nick):
+    for pid, p in PARTIES.items():
+        if nick in p['members']:
+            return p
+    return None
+
+def _party_clean():
+    t = now()
+    dead = [pid for pid, p in PARTIES.items() if not p['members'] or t - p['ts'] > 21600]
+    for pid in dead:
+        PARTIES.pop(pid, None)
+
+def _rtc_clean(room):
+    t = now()
+    if room in RTC:
+        RTC[room] = [m for m in RTC[room] if t - m['ts'] < 120][-200:]
+    dead = [r for r, ms in RTC.items() if not ms or all(t - m['ts'] > 300 for m in ms)]
+    for r in dead:
+        if r != room:
+            RTC.pop(r, None)
+
+def _clanwar_tick(c):
+    t = now()
+    c.execute("UPDATE clan_wars SET status='active' WHERE status='scheduled' AND date<=?", (t,))
+    for r in c.execute("SELECT * FROM clan_wars WHERE status='active' AND date+172800<=?", (t,)).fetchall():
+        w = r['g1'] if r['score1'] > r['score2'] else (r['g2'] if r['score2'] > r['score1'] else '무승부')
+        c.execute("UPDATE clan_wars SET status='done', winner=? WHERE id=?", (w, r['id']))
+
+def _pvp_finish(c, m, winner):
+    """PvP 종료 시 1회: 전적 기록 + 클랜전 점수"""
+    if m.get('recorded'):
+        return
+    m['recorded'] = True
+    losers = [n for n in m['p'] if n != winner]
+    if not losers:
+        return
+    loser = losers[0]
+    t = now()
+    c.execute('INSERT INTO pvp_stats(nick,wins,losses,ts) VALUES(?,1,0,?) '
+              'ON CONFLICT(nick) DO UPDATE SET wins=wins+1, ts=?', (winner, t, t))
+    c.execute('INSERT INTO pvp_stats(nick,wins,losses,ts) VALUES(?,0,1,?) '
+              'ON CONFLICT(nick) DO UPDATE SET losses=losses+1, ts=?', (loser, t, t))
+    _clanwar_tick(c)
+    gw = c.execute('SELECT guild FROM players WHERE nick=?', (winner,)).fetchone()
+    gl = c.execute('SELECT guild FROM players WHERE nick=?', (loser,)).fetchone()
+    gw = gw['guild'] if gw else ''
+    gl = gl['guild'] if gl else ''
+    if gw and gl and gw != gl:
+        r = c.execute("SELECT * FROM clan_wars WHERE status='active' AND "
+                      "((g1=? AND g2=?) OR (g1=? AND g2=?))", (gw, gl, gl, gw)).fetchone()
+        if r:
+            col = 'score1' if r['g1'] == gw else 'score2'
+            c.execute('UPDATE clan_wars SET %s=%s+1 WHERE id=?' % (col, col), (r['id'],))
+
+def _guild_owner(c, name):
+    r = c.execute('SELECT owner FROM guilds WHERE name=?', (name,)).fetchone()
+    return r['owner'] if r else None
+
+def _rel_key(a, b):
+    return (a, b) if a < b else (b, a)
+
+
 # ============================== ⚔️ PvP 실시간 대전 ==============================
 PVP_QUEUE = []       # [{nick, power, loadout, ts, enq}]
 PVP_MATCHES = {}     # id -> match
@@ -913,15 +1016,8 @@ def api(path, q, body):
             return {'ok': True}
 
         if path == '/guild/join':
-            name = (body.get('name') or '')[:30]
-            nick = (body.get('nick') or '')[:20]
-            if not c.execute('SELECT 1 FROM guilds WHERE name=?', (name,)).fetchone():
-                return {'ok': False, 'error': 'not_found'}
-            c.execute('DELETE FROM guild_members WHERE nick=?', (nick,))
-            c.execute('INSERT OR REPLACE INTO guild_members(guild,nick,ts) VALUES(?,?,?)',
-                      (name, nick, now()))
-            c.execute('UPDATE players SET guild=? WHERE nick=?', (name, nick))
-            return {'ok': True}
+            # 🏰 클랜은 초대제 — 직접 가입 불가, 가입 신청(joinreq) 후 클랜장이 수락해야 함
+            return {'ok': False, 'error': 'invite_only'}
 
         if path == '/guild/leave':
             name = (body.get('name') or '')[:30]
@@ -1481,6 +1577,296 @@ def api(path, q, body):
                       "ON CONFLICT(k) DO UPDATE SET v=?", (str(now()), str(now())))
             return {'ok': True}
 
+        # ---------- 👥 친구 ----------
+        if path == '/friend/list':
+            nick = str(P('nick', ''))[:20].strip()
+            cut = now() - 90
+            rows = c.execute('SELECT b, ts FROM friends WHERE a=? ORDER BY ts DESC LIMIT 100', (nick,)).fetchall()
+            out = []
+            for r in rows:
+                on = c.execute('SELECT 1 FROM players WHERE nick=? AND last_seen>?', (r['b'], cut)).fetchone()
+                out.append({'nick': r['b'], 'online': bool(on)})
+            return {'ok': True, 'friends': out}
+
+        if path == '/friend/remove':
+            nick = str(P('nick', ''))[:20].strip()
+            tg = str(P('target', ''))[:20].strip()
+            c.execute('DELETE FROM friends WHERE (a=? AND b=?) OR (a=? AND b=?)', (nick, tg, tg, nick))
+            return {'ok': True}
+
+        # ---------- 📨 초대/신청 ----------
+        if path == '/invite/send':
+            typ = str(P('type', ''))[:12]
+            frm = str(P('from', ''))[:20].strip()
+            to = str(P('to', ''))[:20].strip()
+            data = P('data', {}) or {}
+            if isinstance(data, str):
+                try: data = json.loads(data)
+                except Exception: data = {}
+            if typ not in ('friend', 'party', 'duel', 'guild', 'joinreq', 'clanwar'):
+                return {'ok': False, 'error': 'bad_type'}
+            if not frm:
+                return {'ok': False, 'error': 'no_from'}
+            c.execute("DELETE FROM invites WHERE status='pending' AND ts<?", (now() - 86400,))
+            if typ == 'guild':
+                g = str(data.get('guild', ''))[:30]
+                if _guild_owner(c, g) != frm:
+                    return {'ok': False, 'error': 'not_owner'}
+                if not to:
+                    return {'ok': False, 'error': 'no_to'}
+            if typ == 'joinreq':
+                g = str(data.get('guild', ''))[:30]
+                own = _guild_owner(c, g)
+                if not own:
+                    return {'ok': False, 'error': 'no_guild'}
+                to = own
+            if typ == 'clanwar':
+                g1 = str(data.get('from_guild', ''))[:30]
+                g2 = str(data.get('target', ''))[:30]
+                date = int(data.get('date', 0) or 0)
+                if _guild_owner(c, g1) != frm:
+                    return {'ok': False, 'error': 'not_owner'}
+                own2 = _guild_owner(c, g2)
+                if not own2:
+                    return {'ok': False, 'error': 'no_guild'}
+                if date <= now():
+                    return {'ok': False, 'error': 'bad_date'}
+                to = own2
+                data = {'from_guild': g1, 'target': g2, 'date': date}
+            if typ == 'party':
+                p = _party_of(frm)
+                if p is None:
+                    _party_clean()
+                    PARTY_SEQ[0] += 1
+                    pid = 'p%d_%d' % (now(), PARTY_SEQ[0])
+                    p = {'id': pid, 'owner': frm, 'members': [frm], 'ts': now()}
+                    PARTIES[pid] = p
+                data = {'party': p['id']}
+            if typ == 'friend' and c.execute('SELECT 1 FROM friends WHERE a=? AND b=?', (frm, to)).fetchone():
+                return {'ok': False, 'error': 'already_friend'}
+            if not to:
+                return {'ok': False, 'error': 'no_to'}
+            if to == frm:
+                return {'ok': False, 'error': 'self'}
+            if c.execute("SELECT 1 FROM invites WHERE type=? AND from_nick=? AND to_nick=? AND status='pending'",
+                         (typ, frm, to)).fetchone():
+                return {'ok': False, 'error': 'dup'}
+            c.execute('INSERT INTO invites(type,from_nick,to_nick,data,status,ts) VALUES(?,?,?,?,?,?)',
+                      (typ, frm, to, json.dumps(data, ensure_ascii=False), 'pending', now()))
+            return {'ok': True, 'to': to}
+
+        if path == '/invite/poll':
+            nick = str(P('nick', ''))[:20].strip()
+            since_resp = int(P('since_resp', 0) or 0)
+            rows = c.execute("SELECT id,type,from_nick,data,ts FROM invites WHERE to_nick=? "
+                             "AND status='pending' ORDER BY id DESC LIMIT 20", (nick,)).fetchall()
+            resp = c.execute("SELECT id,type,to_nick,status,data,resp_ts FROM invites WHERE from_nick=? "
+                             "AND status IN ('accepted','declined') AND resp_ts>? "
+                             "ORDER BY resp_ts DESC LIMIT 20", (nick, since_resp)).fetchall()
+            return {'ok': True,
+                    'invites': [dict(r) for r in rows],
+                    'responses': [dict(r) for r in resp]}
+
+        if path == '/invite/respond':
+            iid = int(P('id', 0) or 0)
+            nick = str(P('nick', ''))[:20].strip()
+            accept = bool(P('accept', False))
+            iv = c.execute('SELECT * FROM invites WHERE id=?', (iid,)).fetchone()
+            if not iv or iv['to_nick'] != nick or iv['status'] != 'pending':
+                return {'ok': False, 'error': 'gone'}
+            try:
+                data = json.loads(iv['data'] or '{}')
+            except Exception:
+                data = {}
+            c.execute('UPDATE invites SET status=?, resp_ts=? WHERE id=?',
+                      ('accepted' if accept else 'declined', now(), iid))
+            if not accept:
+                return {'ok': True, 'declined': True}
+            typ = iv['type']
+            frm = iv['from_nick']
+            if typ == 'friend':
+                c.execute('INSERT OR IGNORE INTO friends(a,b,ts) VALUES(?,?,?)', (frm, nick, now()))
+                c.execute('INSERT OR IGNORE INTO friends(a,b,ts) VALUES(?,?,?)', (nick, frm, now()))
+                return {'ok': True, 'type': typ, 'friend': frm}
+            if typ == 'party':
+                pid = data.get('party', '')
+                p = PARTIES.get(pid)
+                if p is None:
+                    return {'ok': False, 'error': 'party_gone'}
+                if len(p['members']) >= 8:
+                    return {'ok': False, 'error': 'party_full'}
+                old = _party_of(nick)
+                if old and old['id'] != pid:
+                    old['members'] = [x for x in old['members'] if x != nick]
+                if nick not in p['members']:
+                    p['members'].append(nick)
+                p['ts'] = now()
+                return {'ok': True, 'type': typ, 'party': p}
+            if typ in ('guild', 'joinreq'):
+                g = str(data.get('guild', ''))[:30]
+                member = nick if typ == 'guild' else frm
+                if not c.execute('SELECT 1 FROM guilds WHERE name=?', (g,)).fetchone():
+                    return {'ok': False, 'error': 'no_guild'}
+                c.execute('DELETE FROM guild_members WHERE nick=?', (member,))
+                c.execute('INSERT OR REPLACE INTO guild_members(guild,nick,ts) VALUES(?,?,?)',
+                          (g, member, now()))
+                c.execute('UPDATE players SET guild=? WHERE nick=?', (g, member))
+                return {'ok': True, 'type': typ, 'guild': g, 'member': member}
+            if typ == 'duel':
+                if _pvp_match_of(frm)[1] or _pvp_match_of(nick)[1]:
+                    return {'ok': False, 'error': 'busy'}
+                ld1 = data.get('loadout', {})
+                p1 = max(1.0, float(data.get('power', 1) or 1))
+                ld2 = P('loadout', {}) or {}
+                if isinstance(ld2, str):
+                    try: ld2 = json.loads(ld2)
+                    except Exception: ld2 = {}
+                p2 = max(1.0, float(P('power', 1) or 1))
+                PVP_SEQ[0] += 1
+                mid = 'm%d_%d' % (now(), PVP_SEQ[0])
+                PVP_MATCHES[mid] = {
+                    'p': {frm: {'hp': 100.0, 'power': p1, 'loadout': ld1, 'last_atk': 0, 'seen': now()},
+                          nick: {'hp': 100.0, 'power': p2, 'loadout': ld2, 'last_atk': 0, 'seen': now()}},
+                    'actions': [], 'seq': 0, 'winner': '', 'won_ts': 0, 'ts': now()}
+                return {'ok': True, 'type': typ, 'matched': True, 'match': mid,
+                        'opp': ld1, 'opp_power': p1}
+            if typ == 'clanwar':
+                g1 = data.get('from_guild', '')
+                g2 = data.get('target', '')
+                date = int(data.get('date', 0) or 0)
+                c.execute('INSERT INTO clan_wars(g1,g2,date,status,ts) VALUES(?,?,?,?,?)',
+                          (g1, g2, date, 'scheduled', now()))
+                return {'ok': True, 'type': typ, 'war': {'g1': g1, 'g2': g2, 'date': date}}
+            return {'ok': True, 'type': typ}
+
+        # ---------- 🎉 파티 ----------
+        if path == '/party/state':
+            _party_clean()
+            nick = str(P('nick', ''))[:20].strip()
+            p = _party_of(nick)
+            if p is None:
+                return {'ok': True, 'party': None}
+            cut = now() - 90
+            mem = []
+            for n in p['members']:
+                on = c.execute('SELECT 1 FROM players WHERE nick=? AND last_seen>?', (n, cut)).fetchone()
+                mem.append({'nick': n, 'online': bool(on), 'owner': n == p['owner']})
+            return {'ok': True, 'party': {'id': p['id'], 'owner': p['owner'], 'members': mem}}
+
+        if path == '/party/create':
+            nick = str(P('nick', ''))[:20].strip()
+            if not nick:
+                return {'ok': False, 'error': 'no_nick'}
+            p = _party_of(nick)
+            if p is None:
+                PARTY_SEQ[0] += 1
+                pid = 'p%d_%d' % (now(), PARTY_SEQ[0])
+                p = {'id': pid, 'owner': nick, 'members': [nick], 'ts': now()}
+                PARTIES[pid] = p
+            return {'ok': True, 'party': p}
+
+        if path == '/party/leave':
+            nick = str(P('nick', ''))[:20].strip()
+            p = _party_of(nick)
+            if p:
+                p['members'] = [x for x in p['members'] if x != nick]
+                if p['owner'] == nick and p['members']:
+                    p['owner'] = p['members'][0]
+                if not p['members']:
+                    PARTIES.pop(p['id'], None)
+            return {'ok': True}
+
+        # ---------- 🏰 클랜 관계 (동맹/적대) ----------
+        if path == '/guild/relation/set':
+            nick = str(P('nick', ''))[:20].strip()
+            target = str(P('target', ''))[:30].strip()
+            typ = str(P('rel', ''))[:12]
+            g = c.execute('SELECT guild FROM guild_members WHERE nick=?', (nick,)).fetchone()
+            g = g['guild'] if g else ''
+            if not g or _guild_owner(c, g) != nick:
+                return {'ok': False, 'error': 'not_owner'}
+            if not c.execute('SELECT 1 FROM guilds WHERE name=?', (target,)).fetchone():
+                return {'ok': False, 'error': 'no_guild'}
+            if target == g:
+                return {'ok': False, 'error': 'self'}
+            k1, k2 = _rel_key(g, target)
+            cur = c.execute('SELECT * FROM guild_relations WHERE g1=? AND g2=?', (k1, k2)).fetchone()
+            if typ == 'none':
+                c.execute('DELETE FROM guild_relations WHERE g1=? AND g2=?', (k1, k2))
+                return {'ok': True, 'rel': 'none'}
+            if typ == 'enemy':
+                c.execute('INSERT OR REPLACE INTO guild_relations(g1,g2,type,req,ts) VALUES(?,?,?,?,?)',
+                          (k1, k2, 'enemy', g, now()))
+                return {'ok': True, 'rel': 'enemy'}
+            if typ == 'ally':
+                if cur and cur['type'] == 'ally_pending' and cur['req'] != g:
+                    c.execute('UPDATE guild_relations SET type=?, ts=? WHERE g1=? AND g2=?',
+                              ('ally', now(), k1, k2))
+                    return {'ok': True, 'rel': 'ally'}
+                c.execute('INSERT OR REPLACE INTO guild_relations(g1,g2,type,req,ts) VALUES(?,?,?,?,?)',
+                          (k1, k2, 'ally_pending', g, now()))
+                return {'ok': True, 'rel': 'ally_pending'}
+            return {'ok': False, 'error': 'bad_rel'}
+
+        if path == '/guild/relation/list':
+            g = str(P('guild', ''))[:30].strip()
+            rows = c.execute('SELECT * FROM guild_relations WHERE g1=? OR g2=? ORDER BY ts DESC LIMIT 50',
+                             (g, g)).fetchall()
+            out = []
+            for r in rows:
+                other = r['g2'] if r['g1'] == g else r['g1']
+                out.append({'guild': other, 'type': r['type'], 'req': r['req']})
+            return {'ok': True, 'relations': out}
+
+        # ---------- 📅 클랜전 ----------
+        if path == '/clanwar/list':
+            _clanwar_tick(c)
+            g = str(P('guild', ''))[:30].strip()
+            if g:
+                rows = c.execute('SELECT * FROM clan_wars WHERE g1=? OR g2=? ORDER BY date DESC LIMIT 30',
+                                 (g, g)).fetchall()
+            else:
+                rows = c.execute('SELECT * FROM clan_wars ORDER BY date DESC LIMIT 30').fetchall()
+            return {'ok': True, 'wars': [dict(r) for r in rows], 'now': now()}
+
+        # ---------- 🏆 PvP 랭킹 / 내 매치 ----------
+        if path == '/pvp/rank':
+            rows = c.execute('SELECT nick,wins,losses FROM pvp_stats '
+                             'ORDER BY wins DESC, losses ASC LIMIT 50').fetchall()
+            return {'ok': True, 'rank': [dict(r) for r in rows]}
+
+        if path == '/pvp/mymatch':
+            nick = str(P('nick', ''))[:20].strip()
+            mid, m = _pvp_match_of(nick)
+            if not m:
+                return {'ok': True, 'matched': False}
+            opp = [n for n in m['p'] if n != nick][0]
+            return {'ok': True, 'matched': True, 'match': mid,
+                    'opp': m['p'][opp]['loadout'], 'opp_power': m['p'][opp]['power']}
+
+        # ---------- 🎤 음성채팅 시그널링 (WebRTC) ----------
+        if path == '/rtc/send':
+            room = str(P('room', ''))[:60]
+            frm = str(P('from', ''))[:20].strip()
+            to = str(P('to', '*'))[:20]
+            payload = P('payload', {})
+            if not room or not frm:
+                return {'ok': False, 'error': 'empty'}
+            _rtc_clean(room)
+            RTC_SEQ[0] += 1
+            RTC.setdefault(room, []).append(
+                {'id': RTC_SEQ[0], 'from': frm, 'to': to, 'payload': payload, 'ts': now()})
+            return {'ok': True, 'id': RTC_SEQ[0]}
+
+        if path == '/rtc/poll':
+            room = str(P('room', ''))[:60]
+            nick = str(P('nick', ''))[:20].strip()
+            since = int(P('since', 0) or 0)
+            msgs = [m for m in RTC.get(room, [])
+                    if m['id'] > since and m['from'] != nick and m['to'] in ('*', nick)]
+            top = max([m['id'] for m in RTC.get(room, [])] + [since])
+            return {'ok': True, 'msgs': msgs[-40:], 'seq': top}
+
         # ---------- 💾 세이브 서버 보관 ----------
         if path == '/save/upload':
             nick = str(P('nick', ''))[:20].strip()
@@ -1590,6 +1976,7 @@ def api(path, q, body):
             if m:
                 opp = [n for n in m['p'] if n != nick][0]
                 m['winner'] = opp; m['won_ts'] = now(); m['forfeit'] = True
+                _pvp_finish(c, m, opp)
             return {'ok': True}
 
         if path == '/pvp/action':
@@ -1624,6 +2011,7 @@ def api(path, q, body):
                 m['actions'] = m['actions'][-120:]
             if opp['hp'] <= 0:
                 m['winner'] = nick; m['won_ts'] = now()
+                _pvp_finish(c, m, nick)
             return {'ok': True, 'dmg': dmg, 'crit': crit, 'opp_hp': opp['hp'],
                     'winner': m['winner'], 'seq': m['seq']}
 
@@ -1638,6 +2026,7 @@ def api(path, q, body):
             opp_nick = [n for n in m['p'] if n != nick][0]
             if not m['winner'] and now() - m['p'][opp_nick]['seen'] > 12:
                 m['winner'] = nick; m['won_ts'] = now(); m['forfeit'] = True   # 상대 이탈 = 몰수승
+                _pvp_finish(c, m, nick)
             acts = [a for a in m['actions'] if a['seq'] > since]
             return {'ok': True, 'hp': {n: p['hp'] for n, p in m['p'].items()},
                     'actions': acts, 'seq': m['seq'], 'winner': m['winner'],

@@ -3702,11 +3702,21 @@ async function showOnlineGUI(){
   } else if(!onlinePlayers.length){
     h = '<div style="color:var(--mut);text-align:center;padding:24px">접속 중인 플레이어가 없습니다</div>';
   } else {
+    const obs = 'font-size:11px;padding:3px 7px;cursor:pointer;background:var(--panel2);border:1px solid var(--line);color:var(--txt);border-radius:3px';
     h = '<div style="color:var(--cyan);margin-bottom:8px">현재 '+onlineCount+'명 접속 중</div>'+
-      onlinePlayers.map(p =>
-      '<div style="display:flex;justify-content:space-between;padding:6px;border-bottom:1px solid var(--line);font-size:12px">'+
+      onlinePlayers.map((p,i) =>
+      '<div style="padding:6px;border-bottom:1px solid var(--line);font-size:12px">'+
+      '<div style="display:flex;justify-content:space-between">'+
       '<span>'+esc(p.nick)+(p.guild?' <span style="color:var(--mut)">['+esc(p.guild)+']</span>':'')+'</span>'+
-      '<span style="color:var(--mut)">LV.'+p.level+' · '+p.stage+'층</span></div>').join('');
+      '<span style="color:var(--mut)">LV.'+p.level+' · '+p.stage+'층</span></div>'+
+      (S && p.nick !== S.nickname ?
+        '<div style="display:flex;gap:5px;margin-top:5px">'+
+        '<button style="'+obs+'" onclick="olFriend('+i+')">🤝 친구</button>'+
+        '<button style="'+obs+'" onclick="olParty('+i+')">🎉 파티</button>'+
+        '<button style="'+obs+'" onclick="olDuel('+i+');closeGUI()">⚔️ 대결</button>'+
+        '<button style="'+obs+'" onclick="olGuildInv('+i+')">🏰 클랜</button></div>'
+       : '<div style="color:var(--mut);font-size:10px;margin-top:3px">(나)</div>')+
+      '</div>').join('');
   }
   const b = document.getElementById('guiModalBody'); if(b) b.innerHTML = h;
 }

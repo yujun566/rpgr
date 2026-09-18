@@ -198,6 +198,9 @@ header h1 em{animation:riftGlow 2.2s infinite;}
 .gL{color:#ff8a3a}.gM{color:#ff5470;text-shadow:0 0 4px #ff5470}
 .gC{color:#43e6cf;text-shadow:0 0 6px #43e6cf}
 .gP{color:#fff;text-shadow:0 0 8px #fff,0 0 12px #a86bff}
+.gT{color:#7bffea;text-shadow:0 0 8px #7bffea,0 0 14px #43e6cf}
+.gO{color:#ffb6ff;text-shadow:0 0 8px #ffb6ff,0 0 16px #ff2d95;animation:omniGlow 1.6s ease-in-out infinite}
+@keyframes omniGlow{0%,100%{filter:brightness(1)}50%{filter:brightness(1.6)}}
 
 .gDEV{color:#ff2d95;font-weight:bold;text-shadow:0 0 6px #ff2d95,0 0 12px #ffd23f,0 0 18px #43e6cf}
 #devConsole input::placeholder{color:#666}
@@ -727,7 +730,15 @@ input, textarea, [contenteditable], [style*="user-select:all"], [style*="user-se
       </div>
     </div>
     <div id="stageBar">
-      <div id="stageName">스테이지 <em>1-1</em> · 슬라임 습지</div>
+      <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
+        <div id="stageName">스테이지 <em>1-1</em> · 슬라임 습지</div>
+        <span style="margin-left:auto;display:flex;gap:3px">
+          <button class="buy" style="font-size:10px;padding:2px 6px" title="10층 뒤로" onclick="farmStage(-10)">≪</button>
+          <button class="buy" style="font-size:10px;padding:2px 6px" title="이전 층" onclick="farmStage(-1)">◀</button>
+          <button class="buy" style="font-size:10px;padding:2px 6px" title="다음 층 (최고기록까지)" onclick="farmStage(1)">▶</button>
+          <button class="buy" style="font-size:10px;padding:2px 6px" title="스테이지 지정 이동 (파밍)" onclick="farmStageJump()">🔁</button>
+        </span>
+      </div>
       <div class="pips" id="pips"></div>
     </div>
     <div id="skillButtons" style="margin:15px 0; display:grid; grid-template-columns:1fr 1fr; gap:8px;"></div>
@@ -954,6 +965,10 @@ input, textarea, [contenteditable], [style*="user-select:all"], [style*="user-se
       <button class="buy" style="font-size:12px" onclick="showGuildGUI()">🏰 길드</button>
       <button class="buy" style="font-size:12px; background:linear-gradient(135deg,#7a1c2e,#e94560)" onclick="pvpOpen()" id="pvpBtn">⚔️ PvP 대전</button>
       <button class="buy" style="font-size:12px" onclick="restoreFromServer()">☁️ 세이브 복구</button>
+      <button class="buy" style="font-size:12px" onclick="showFriendsGUI()">👥 친구</button>
+      <button class="buy" style="font-size:12px" onclick="showPartyGUI()">🎉 파티</button>
+      <button class="buy" style="font-size:12px; background:linear-gradient(135deg,#5a3a00,#ffd23f)" onclick="showPvpRankGUI()">🏆 PvP 랭킹</button>
+      <button class="buy" style="font-size:12px; background:linear-gradient(135deg,#3a0d3a,#a86bff)" onclick="showClanWarGUI()">📅 클랜전</button>
     </div>
     <div id="worldBossBox" style="border-top:1px solid var(--line);padding-top:8px;margin-top:8px"></div>
   </div>
@@ -3128,11 +3143,20 @@ async function netSyncOnline(){
     onlineCount = r.count || 0;
     const el = document.getElementById('onlineList');
     if(el){
+      const bs = 'font-size:10px;padding:1px 5px;margin-left:3px;cursor:pointer;background:var(--panel2);border:1px solid var(--line);color:var(--txt)';
       el.innerHTML = '<div style="color:var(--cyan);margin-bottom:6px">👥 접속 중 ' + onlineCount + '명</div>' +
-        (onlinePlayers.length ? onlinePlayers.map(p =>
-          '<div style="font-size:11px;padding:2px 0">· ' + esc(p.nick) +
-          ' <span style="color:var(--mut)">LV.' + p.level + ' · ' + p.stage + '층' +
-          (p.guild ? ' · ' + esc(p.guild) : '') + '</span></div>').join('')
+        (onlinePlayers.length ? onlinePlayers.map((p,i) =>
+          '<div style="font-size:11px;padding:3px 0;display:flex;align-items:center;flex-wrap:wrap">· ' + esc(p.nick) +
+          ' <span style="color:var(--mut)">&nbsp;LV.' + p.level + ' · ' + p.stage + '층' +
+          (p.guild ? ' · ' + esc(p.guild) : '') + '</span>' +
+          (S && p.nick !== S.nickname ?
+            '<span style="margin-left:auto;white-space:nowrap">' +
+            '<button style="' + bs + '" title="친구 신청" onclick="olFriend(' + i + ')">🤝</button>' +
+            '<button style="' + bs + '" title="파티 초대" onclick="olParty(' + i + ')">🎉</button>' +
+            '<button style="' + bs + '" title="대결 신청" onclick="olDuel(' + i + ')">⚔️</button>' +
+            '<button style="' + bs + '" title="클랜 초대 (클랜장만)" onclick="olGuildInv(' + i + ')">🏰</button>' +
+            '</span>' : '') +
+          '</div>').join('')
         : '<div style="color:var(--mut);font-size:11px">아무도 없습니다</div>');
     }
   }
@@ -3706,10 +3730,12 @@ async function showGuildGUI(){
       'padding:8px;border-bottom:1px solid var(--line);font-size:12px">'+
       '<span><b style="color:var(--gold)">'+(i+1)+'위</b> '+esc(g.name)+
       '<br><span style="color:var(--mut);font-size:11px">'+g.members+'명 · 전투력 '+fmt(g.score)+'</span></span>'+
-      '<button class="buy" style="padding:3px 10px" onclick="guiJoinGuild(\''+esc(g.name).replace(/'/g,"\\'")+'\')">가입</button></div>'
+      '<button class="buy" style="padding:3px 10px" onclick="guiJoinGuild(\''+esc(g.name).replace(/'/g,"\\'")+'\')">가입 신청</button></div>'
     ).join('');
   }
+  h += '<div id="guildExtra"></div>';
   const b = document.getElementById('guiModalBody'); if(b) b.innerHTML = h;
+  loadGuildExtras();
 }
 async function guiCreateGuild(){
   const i = document.getElementById('guiGuildName');
@@ -3723,9 +3749,11 @@ async function guiCreateGuild(){
 }
 async function guiJoinGuild(n){
   if(!NET.isOnline()) return;
-  const r = await NET.req('/guild/join', {name:n, nick:S.nickname});
-  if(r && r.ok){ S.guild = n; sfx('buy'); log('<span class="g">🏰 ['+esc(n)+'] 가입!</span>');
-                 saveGame(true); showGuildGUI(); }
+  if(S.guild === n){ log('이미 이 클랜 소속입니다.'); return; }
+  const r = await NET.req('/invite/send', {type:'joinreq', from:S.nickname, to:'', data:{guild:n}});
+  if(r && r.ok){ sfx('buy'); log('<span class="g">🏰 ['+esc(n)+'] 가입 신청 완료 — 클랜장이 수락하면 가입됩니다!</span>'); }
+  else if(r && r.error === 'dup'){ log('이미 가입 신청 대기 중입니다.'); }
+  else { sfx('error'); log('<span class="r">가입 신청 실패</span>'); }
 }
 
 // ---------------- 📬 우편 GUI ----------------
@@ -4042,7 +4070,7 @@ function weaponPalOf(e){
   if(e.dev || e.grade === 'Developer') return 'wp_dev';
   const m = {Normal:'wp_common', Rare:'wp_rare', Epic:'wp_epic', Unique:'wp_unique',
              Legendary:'wp_legend', Mythic:'wp_mythic', Celestial:'wp_celestial',
-             Primordial:'wp_primordial'};
+             Primordial:'wp_primordial', Transcendent:'wp_primordial', Omni:'wp_dev', Genesis:'wp_dev', Absolute:'wp_dev'};
   return m[e.grade] || 'wp_common';
 }
 // 방어구 등급에 따라 스킨 몸통 색을 덧입힘
@@ -5133,13 +5161,13 @@ const ELEMS = {불:'🔥', 물:'💧', 풀:'🌿', 빛:'✨', 어둠:'🌑'};
 const ELEM_KEYS = Object.keys(ELEMS);
 const BEATS = {불:'풀', 풀:'물', 물:'불', 빛:'어둠', 어둠:'빛'};
 function elemMult(a, d){ if(!a || !d) return 1; if(BEATS[a]===d) return 2; if(BEATS[d]===a) return 0.5; return 1; }
-const GRADES = ['Normal','Rare','Epic','Unique','Legendary','Mythic','Celestial','Primordial'];
-const GRADE_KO = {Developer:'개발자', Normal:'일반', Rare:'희귀', Epic:'영웅', Unique:'유니크', Legendary:'전설', Mythic:'신화', Celestial:'천상', Primordial:'태초'};
-const GRADE_CLS = {Developer:'gDEV', Normal:'gN', Rare:'gR', Epic:'gE', Unique:'gU', Legendary:'gL', Mythic:'gM', Celestial:'gC', Primordial:'gP'};
-const GRADE_PFX = {Developer:'', Normal:'낡은', Rare:'빛나는', Epic:'정교한', Unique:'유일한', Legendary:'전설의', Mythic:'신화의', Celestial:'천상의', Primordial:'태초의'};
-const GRADE_COLOR = {Developer:'#ff2d95', Normal:'#9aa0b0', Rare:'#43a0e6', Epic:'#a86bff', Unique:'#ffd23f', Legendary:'#ff8a3a', Mythic:'#ff5470', Celestial:'#43e6cf', Primordial:'#ffffff'};
+const GRADES = ['Normal','Rare','Epic','Unique','Legendary','Mythic','Celestial','Primordial','Transcendent','Omni','Genesis','Absolute'];
+const GRADE_KO = {Developer:'개발자', Normal:'일반', Rare:'희귀', Epic:'영웅', Unique:'유니크', Legendary:'전설', Mythic:'신화', Celestial:'천상', Primordial:'태초', Transcendent:'초월', Omni:'만물', Genesis:'창세', Absolute:'절대'};
+const GRADE_CLS = {Developer:'gDEV', Normal:'gN', Rare:'gR', Epic:'gE', Unique:'gU', Legendary:'gL', Mythic:'gM', Celestial:'gC', Primordial:'gP', Transcendent:'gT', Omni:'gO', Genesis:'gG', Absolute:'gA'};
+const GRADE_PFX = {Developer:'', Normal:'낡은', Rare:'빛나는', Epic:'정교한', Unique:'유일한', Legendary:'전설의', Mythic:'신화의', Celestial:'천상의', Primordial:'태초의', Transcendent:'초월한', Omni:'만물의', Genesis:'세상을 빚은', Absolute:'유일무이한'};
+const GRADE_COLOR = {Developer:'#ff2d95', Normal:'#9aa0b0', Rare:'#43a0e6', Epic:'#a86bff', Unique:'#ffd23f', Legendary:'#ff8a3a', Mythic:'#ff5470', Celestial:'#43e6cf', Primordial:'#ffffff', Transcendent:'#7bffea', Omni:'#ffb6ff', Genesis:'#7bff00', Absolute:'#ff0044'};
 // 등급별 드랍 가중치 (낮은 등급일수록 흔함)
-const GRADE_WEIGHT = {Normal:1000, Rare:120, Epic:15, Unique:2, Legendary:0.3, Mythic:0.04, Celestial:0.004, Primordial:0.0005};
+const GRADE_WEIGHT = {Normal:1000, Rare:120, Epic:15, Unique:2, Legendary:0.3, Mythic:0.04, Celestial:0.004, Primordial:0.0005, Transcendent:0.00006, Omni:0.000008, Genesis:0.000001, Absolute:0.00000012};
 
 const WEAPON_BASE = [
   '철검',
@@ -5201,7 +5229,224 @@ const WEAPON_BASE = [
   '차원 지팡이',
   '마도서',
   '금서',
-  '창세의 서'
+  '창세의 서',
+  '목검',
+  '청동검',
+  '강철검',
+  '쌍날검',
+  '곡도',
+  '시미터',
+  '카타나',
+  '태도',
+  '언월도',
+  '참마도',
+  '집행자의 검',
+  '왕의 검',
+  '제국 검',
+  '수호자의 검',
+  '심판의 검',
+  '여명검',
+  '황혼검',
+  '월광검',
+  '태양검',
+  '별빛검',
+  '혈검',
+  '독아검',
+  '저주받은 검',
+  '악몽의 검',
+  '영혼포식자',
+  '공허의 검',
+  '시간의 검',
+  '운명의 검',
+  '인과의 검',
+  '절대검',
+  '단도',
+  '자객의 단검',
+  '그림자 단검',
+  '독침 단검',
+  '쌍단검',
+  '빙결 단도',
+  '뇌격 단도',
+  '균열 단도',
+  '차원 단검',
+  '암살자의 맹세',
+  '낫',
+  '사신의 낫',
+  '수확자의 낫',
+  '영혼의 낫',
+  '종말의 낫',
+  '달의 낫',
+  '피의 낫',
+  '심연의 낫',
+  '까마귀 낫',
+  '만월의 낫',
+  '너클',
+  '강철 너클',
+  '용의 발톱',
+  '호랑이 건틀릿',
+  '파쇄 건틀릿',
+  '뇌신 너클',
+  '화염 건틀릿',
+  '빙하 너클',
+  '수라의 주먹',
+  '천둥 건틀릿',
+  '채찍',
+  '가시 채찍',
+  '화염 채찍',
+  '번개 채찍',
+  '심연의 채찍',
+  '타락의 채찍',
+  '여왕의 채찍',
+  '구속의 사슬',
+  '영혼 사슬',
+  '용살 사슬',
+  '전곤',
+  '모닝스타',
+  '철구',
+  '파성퇴',
+  '거병',
+  '심판의 철퇴',
+  '태산 망치',
+  '뇌정 망치',
+  '화산 망치',
+  '창세의 망치',
+  '수리검',
+  '표창',
+  '차크람',
+  '부메랑',
+  '투척 도끼',
+  '달빛 차크람',
+  '폭풍 부메랑',
+  '혈석 표창',
+  '공허 수리검',
+  '유성 차크람',
+  '전투 낫창',
+  '할버드',
+  '글레이브',
+  '파르티잔',
+  '랜스',
+  '용기사 랜스',
+  '성기사 랜스',
+  '일식창',
+  '월식창',
+  '은하창',
+  '혼합궁',
+  '연발 석궁',
+  '저격 석궁',
+  '유령 활',
+  '서리 활',
+  '핏빛 활',
+  '천벌궁',
+  '혜성궁',
+  '심연궁',
+  '창세궁',
+  '견습생 지팡이',
+  '호두나무 지팡이',
+  '뼈 지팡이',
+  '산호 지팡이',
+  '폭풍 지팡이',
+  '용언 지팡이',
+  '별의 홀',
+  '심판의 홀',
+  '만상의 홀',
+  '태초의 지팡이',
+  '주술서',
+  '예언서',
+  '금단의 서',
+  '심연의 서',
+  '용언의 서',
+  '천상의 서',
+  '시간의 서',
+  '운명의 서',
+  '무한의 서',
+  '만물의 서',
+  '총검',
+  '마탄총',
+  '뇌관총',
+  '혈검',
+  '귀신검',
+  '수라검',
+  '나찰검',
+  '천마검',
+  '건곤검',
+  '일월검',
+  '무형검',
+  '환영검',
+  '섬광검',
+  '월아검',
+  '비연검',
+  '청강검',
+  '자하검',
+  '묵운검',
+  '시간의 검',
+  '공허검',
+  '차원절단기',
+  '운명의 검',
+  '인과율의 검',
+  '별을 벤 검',
+  '은하수 검',
+  '성좌검',
+  '유성검',
+  '혜성검',
+  '오로라 블레이드',
+  '프리즘 소드',
+  '크리스탈 세이버',
+  '영혼 수확자',
+  '사신의 낫',
+  '황혼의 낫',
+  '새벽의 낫',
+  '만월도',
+  '언월도',
+  '청룡언월도',
+  '참마도',
+  '귀참도',
+  '뇌명도',
+  '폭염도',
+  '빙백도',
+  '쌍절곤',
+  '철편',
+  '구절편',
+  '채찍검',
+  '독사 채찍',
+  '가시 채찍',
+  '전기 채찍',
+  '수정 지팡이',
+  '현자의 지팡이',
+  '대마법사 지팡이',
+  '세계수 지팡이',
+  '용골 지팡이',
+  '악마의 지팡이',
+  '천사의 지팡이',
+  '룬 스태프',
+  '카오스 스태프',
+  '코스모스 스태프',
+  '중력자 완드',
+  '반물질 완드',
+  '특이점 지팡이',
+  '화염 마도서',
+  '빙결 마도서',
+  '뇌전 마도서',
+  '암흑 마도서',
+  '빛의 마도서',
+  '금단의 마도서',
+  '창세기',
+  '종말의 서',
+  '시공 나침반',
+  '운석 파편',
+  '플라즈마 커터',
+  '레이저 블레이드',
+  '광자검',
+  '이온 블래스터',
+  '양자 붕괴기',
+  '차원 대포',
+  '블랙홀 생성기',
+  '빅뱅 캐논',
+  '우주 끈',
+  '만물의 손',
+  '태초의 불꽃',
+  '영겁의 얼음',
+  '절대영도',
+  '무한동력 해머',
 ];
 const ARMOR_BASE  = [
   '천 로브',
@@ -5303,7 +5548,47 @@ const ARMOR_BASE  = [
   '균열 갑주',
   '무한의 예복',
   '종말의 갑주',
-  '창조의 갑옷'
+  '창조의 갑옷',
+  '수호자의 갑옷',
+  '성기사 갑옷',
+  '용린 갑옷',
+  '흑룡 갑옷',
+  '백룡 갑옷',
+  '천상 갑옷',
+  '타락한 갑옷',
+  '그림자 갑옷',
+  '유령 갑옷',
+  '정령 갑옷',
+  '세계수 갑옷',
+  '크리스탈 아머',
+  '미스릴 아머',
+  '아다만티움 아머',
+  '오리하르콘 아머',
+  '별빛 로브',
+  '달빛 로브',
+  '태양 로브',
+  '성운 로브',
+  '은하 로브',
+  '대마법사 로브',
+  '시간술사 로브',
+  '공허 로브',
+  '차원 로브',
+  '운명의 로브',
+  '불사조 깃털옷',
+  '용왕의 위엄',
+  '거북 등껍질 갑옷',
+  '베히모스 가죽',
+  '리바이어던 비늘',
+  '천사의 날개옷',
+  '악마의 흉갑',
+  '혼돈의 갑주',
+  '질서의 갑주',
+  '창세의 갑주',
+  '종언의 갑주',
+  '무한의 갑주',
+  '절대 방어구',
+  '만물의 갑주',
+  '태초의 수의',
 ];
 // 드랍 테이블: [확률, 종류]
 const DROP_TABLE = [
@@ -9560,13 +9845,497 @@ function renderHpBars(){
     $('bossTimerTxt').textContent = Math.max(0,bossLeft).toFixed(1)+'s';
   } else btw.style.display = 'none';
 }
+/* ═══════════════════ 📨 초대/알림 시스템 ═══════════════════ */
+const INV = { lastRespTs: Math.floor(Date.now()/1000), seen: {}, timer: null };
+const INV_KO = {friend:'🤝 친구 신청', party:'🎉 파티 초대', duel:'⚔️ 대결 신청',
+                guild:'🏰 클랜 초대', joinreq:'🏰 클랜 가입 신청', clanwar:'📅 클랜전 신청'};
+
+function invBox(){
+  let b = document.getElementById('invToasts');
+  if(!b){
+    b = document.createElement('div');
+    b.id = 'invToasts';
+    b.style.cssText = 'position:fixed;right:12px;bottom:12px;z-index:13000;display:flex;'+
+      'flex-direction:column;gap:8px;max-width:300px;font-family:inherit;';
+    document.body.appendChild(b);
+  }
+  return b;
+}
+function toastMsg(html, ms){
+  const b = invBox();
+  const d = document.createElement('div');
+  d.style.cssText = 'background:var(--panel);border:2px solid var(--cyan);padding:9px 11px;'+
+    'font-size:12px;box-shadow:0 0 14px rgba(67,230,207,.35);';
+  d.innerHTML = html;
+  b.appendChild(d);
+  setTimeout(()=>d.remove(), ms||5000);
+}
+async function pollInvites(){
+  if(!NET.isOnline() || !S || !S.nickname) return;
+  let r = null;
+  try{ r = await NET.req('/invite/poll', {nick:S.nickname, since_resp:INV.lastRespTs}); }catch(e){}
+  if(!r || !r.ok) return;
+  const b = invBox();
+  (r.invites||[]).forEach(v=>{
+    if(INV.seen[v.id]) return;
+    INV.seen[v.id] = 1;
+    let d = {};
+    try{ d = JSON.parse(v.data||'{}'); }catch(e){}
+    let extra = '';
+    if(v.type==='guild' || v.type==='joinreq') extra = ' <b style="color:#a86bff">['+esc(d.guild||'')+']</b>';
+    if(v.type==='clanwar') extra = '<br><span style="color:var(--mut);font-size:11px">'+esc(d.from_guild||'')+' → '+esc(d.target||'')+' · '+new Date((d.date||0)*1000).toLocaleString('ko-KR')+'</span>';
+    const card = document.createElement('div');
+    card.id = 'inv_'+v.id;
+    card.style.cssText = 'background:var(--panel);border:2px solid #e94560;padding:9px 11px;'+
+      'font-size:12px;box-shadow:0 0 14px rgba(233,69,96,.4);';
+    card.innerHTML = (INV_KO[v.type]||v.type)+' — <b style="color:#43e6cf">'+esc(v.from_nick)+'</b>'+extra+
+      '<div style="display:flex;gap:6px;margin-top:7px">'+
+      '<button class="buy" style="flex:1;font-size:11px;padding:4px" onclick="invAccept('+v.id+',\''+v.type+'\')">✅ 수락</button>'+
+      '<button class="buy" style="flex:1;font-size:11px;padding:4px;background:#3a2030" onclick="invDecline('+v.id+')">❌ 거절</button></div>';
+    b.appendChild(card);
+    sfx('buy');
+  });
+  (r.responses||[]).forEach(v=>{
+    INV.lastRespTs = Math.max(INV.lastRespTs, v.resp_ts||0);
+    let d = {};
+    try{ d = JSON.parse(v.data||'{}'); }catch(e){}
+    const ok = v.status==='accepted';
+    toastMsg((INV_KO[v.type]||v.type)+' — <b>'+esc(v.to_nick)+'</b>님이 '+(ok?'<span style="color:#7bffb4">수락!</span>':'<span style="color:var(--red)">거절</span>'));
+    if(ok && v.type==='duel') duelWaitStart();
+    if(ok && v.type==='joinreq'){ S.guild = d.guild||S.guild; saveGame(true); log('<span class="g">🏰 ['+esc(d.guild||'')+'] 가입 완료!</span>'); }
+    if(ok && v.type==='party') showPartyGUI._dirty = true;
+  });
+}
+async function invAccept(id, type){
+  const body = {id:id, nick:S.nickname, accept:true};
+  if(type==='duel'){ body.loadout = pvpMyLoadout(); body.power = calcPower(); }
+  const r = await NET.req('/invite/respond', body);
+  const card = document.getElementById('inv_'+id);
+  if(card) card.remove();
+  if(!r || !r.ok){
+    toastMsg('<span style="color:var(--red)">처리 실패: '+((r&&r.error)||'서버 오류')+'</span>');
+    return;
+  }
+  if(type==='friend'){ toastMsg('🤝 <b>'+esc(r.friend||'')+'</b>님과 친구가 되었습니다!'); }
+  if(type==='party'){ toastMsg('🎉 파티 가입!'); showPartyGUI(); }
+  if(type==='guild'){ S.guild = r.guild; saveGame(true); toastMsg('🏰 <b>['+esc(r.guild)+']</b> 클랜 가입!'); }
+  if(type==='joinreq'){ toastMsg('🏰 <b>'+esc(r.member||'')+'</b>님을 클랜에 받았습니다.'); }
+  if(type==='duel' && r.matched){ pvpStart(r); }
+  if(type==='clanwar'){ toastMsg('📅 클랜전 예약 완료! ['+esc(r.war.g1)+' vs '+esc(r.war.g2)+']<br>'+new Date(r.war.date*1000).toLocaleString('ko-KR')); }
+}
+async function invDecline(id){
+  await NET.req('/invite/respond', {id:id, nick:S.nickname, accept:false});
+  const card = document.getElementById('inv_'+id);
+  if(card) card.remove();
+}
+setInterval(pollInvites, 4000);
+
+/* ═══════════════════ 👥 온라인 목록 액션 ═══════════════════ */
+async function olFriend(i){
+  const p = onlinePlayers[i]; if(!p) return;
+  const r = await NET.req('/invite/send', {type:'friend', from:S.nickname, to:p.nick});
+  if(r&&r.ok) log('🤝 <b>'+esc(p.nick)+'</b>님에게 친구 신청을 보냈습니다.');
+  else log('<span class="r">'+(r&&r.error==='dup'?'이미 신청 대기 중':r&&r.error==='already_friend'?'이미 친구입니다':'신청 실패')+'</span>');
+}
+async function olParty(i){
+  const p = onlinePlayers[i]; if(!p) return;
+  await NET.req('/party/create', {nick:S.nickname});
+  const r = await NET.req('/invite/send', {type:'party', from:S.nickname, to:p.nick});
+  if(r&&r.ok) log('🎉 <b>'+esc(p.nick)+'</b>님에게 파티 초대를 보냈습니다.');
+  else log('<span class="r">'+(r&&r.error==='dup'?'이미 초대 대기 중':'초대 실패')+'</span>');
+}
+async function olDuel(i){
+  const p = onlinePlayers[i]; if(!p) return;
+  if(window.PVP_ON){ log('이미 대전 중입니다.'); return; }
+  const r = await NET.req('/invite/send', {type:'duel', from:S.nickname, to:p.nick,
+    data:{loadout:pvpMyLoadout(), power:calcPower()}});
+  if(r&&r.ok){ log('⚔️ <b>'+esc(p.nick)+'</b>님에게 대결 신청! 수락하면 바로 시작됩니다.'); duelWaitStart(); }
+  else log('<span class="r">'+(r&&r.error==='dup'?'이미 신청 대기 중':'신청 실패')+'</span>');
+}
+async function olGuildInv(i){
+  const p = onlinePlayers[i]; if(!p) return;
+  if(!S.guild){ alert('클랜에 소속되어 있지 않습니다. 먼저 클랜을 만드세요!'); return; }
+  const r = await NET.req('/invite/send', {type:'guild', from:S.nickname, to:p.nick, data:{guild:S.guild}});
+  if(r&&r.ok) log('🏰 <b>'+esc(p.nick)+'</b>님에게 클랜 초대를 보냈습니다.');
+  else log('<span class="r">'+(r&&r.error==='not_owner'?'클랜장만 초대할 수 있습니다':r&&r.error==='dup'?'이미 초대 대기 중':'초대 실패')+'</span>');
+}
+
+/* ═══════════════════ ⚔️ 결투 대기 ═══════════════════ */
+const DUEL = { timer:null, tries:0 };
+function duelWaitStart(){
+  if(DUEL.timer) return;
+  DUEL.tries = 0;
+  DUEL.timer = setInterval(async ()=>{
+    DUEL.tries++;
+    if(window.PVP_ON || DUEL.tries > 45){ clearInterval(DUEL.timer); DUEL.timer = null; return; }
+    const r = await NET.req('/pvp/mymatch', {nick:S.nickname});
+    if(r && r.ok && r.matched){
+      clearInterval(DUEL.timer); DUEL.timer = null;
+      if(!window.PVP_ON) pvpStart(r);
+    }
+  }, 2000);
+}
+
+/* ═══════════════════ 💬 채팅 패널 (친구 DM · 파티) ═══════════════════ */
+const CHATP = { room:null, since:0, timer:null };
+function pairRoom(a, b){ return 'dm:' + [a, b].sort().join('|'); }
+function openChatPanel(title, room){
+  openGUI(title,
+    '<div id="cpMsgs" style="height:250px;overflow-y:auto;font-size:12px;border:1px solid var(--line);padding:7px;margin-bottom:8px;background:var(--panel2)"></div>'+
+    '<div style="display:flex;gap:6px">'+
+    '<input id="cpIn" maxlength="200" placeholder="메시지 입력..." style="flex:1;background:var(--panel2);border:1px solid var(--line);color:var(--txt);padding:7px;font-family:inherit;font-size:12px">'+
+    '<button class="buy" style="padding:6px 12px" onclick="cpSend()">전송</button>'+
+    '<button class="buy" style="padding:6px 10px;background:linear-gradient(135deg,#0d3a2a,#43e6cf)" onclick="vcJoin(CHATP.room)">🎤</button></div>'+
+    '<div style="font-size:10px;color:var(--mut);margin-top:5px">🎤 = 음성채팅 (마이크 권한 필요 · 같은 창에 있는 사람끼리 연결)</div>',
+    {color:'#43e6cf', width:480});
+  CHATP.room = room; CHATP.since = 0;
+  clearInterval(CHATP.timer);
+  const tick = async ()=>{
+    const box = document.getElementById('cpMsgs');
+    if(!box){ clearInterval(CHATP.timer); CHATP.timer = null; return; }
+    const r = await NET.req('/chat/list', {room:CHATP.room, since:CHATP.since});
+    if(r && r.ok && r.messages && r.messages.length){
+      r.messages.forEach(m=>{
+        CHATP.since = Math.max(CHATP.since, m.id);
+        const mine = m.nick === S.nickname;
+        box.innerHTML += '<div style="margin:2px 0"><b style="color:'+(mine?'#ffd23f':'#43e6cf')+'">'+esc(m.nick)+'</b>: '+esc(m.msg)+'</div>';
+      });
+      box.scrollTop = box.scrollHeight;
+    }
+  };
+  tick();
+  CHATP.timer = setInterval(tick, 2000);
+  setTimeout(()=>{
+    const inp = document.getElementById('cpIn');
+    if(inp) inp.addEventListener('keydown', e=>{ if(e.key==='Enter') cpSend(); });
+  }, 100);
+}
+async function cpSend(){
+  const inp = document.getElementById('cpIn');
+  if(!inp || !inp.value.trim()) return;
+  const msg = inp.value.trim();
+  inp.value = '';
+  await NET.req('/chat/send', {nick:S.nickname, msg:msg, room:CHATP.room});
+}
+
+/* ═══════════════════ 👥 친구 GUI ═══════════════════ */
+let FR_LIST = [];
+async function showFriendsGUI(){
+  if(!S || !S.nickname){ alert('먼저 소셜 탭에서 고유이름을 설정하세요.'); return; }
+  openGUI('👥 친구', '<div style="color:var(--mut);text-align:center;padding:20px">불러오는 중...</div>', {color:'#43e6cf'});
+  const r = await NET.req('/friend/list', {nick:S.nickname});
+  let h;
+  if(!r || !r.ok){ h = '<div style="color:var(--mut);text-align:center;padding:20px">서버 미연결</div>'; }
+  else {
+    FR_LIST = r.friends || [];
+    h = FR_LIST.length ? FR_LIST.map((f,i)=>
+      '<div style="display:flex;align-items:center;padding:7px 4px;border-bottom:1px solid var(--line);font-size:12px">'+
+      '<span style="color:'+(f.online?'#7bffb4':'var(--mut)')+'">'+(f.online?'🟢':'⚫')+'</span>&nbsp;<b>'+esc(f.nick)+'</b>'+
+      '<span style="margin-left:auto;display:flex;gap:5px">'+
+      '<button class="buy" style="font-size:11px;padding:3px 8px" onclick="frChat('+i+')">💬 채팅</button>'+
+      '<button class="buy" style="font-size:11px;padding:3px 8px;background:linear-gradient(135deg,#0d3a2a,#43e6cf)" onclick="frVoice('+i+')">🎤 음성</button>'+
+      '<button class="buy" style="font-size:11px;padding:3px 8px;background:#3a2030" onclick="frRemove('+i+')">❌</button></span></div>'
+    ).join('') : '<div style="color:var(--mut);text-align:center;padding:20px">친구가 없습니다</div>';
+    h += '<div style="font-size:11px;color:var(--mut);margin-top:10px;border-top:1px dashed var(--line);padding-top:8px">'+
+      '➕ 친구 추가: 소셜탭 <b>접속 중 목록</b>에서 상대 옆 <b>🤝</b> 버튼을 눌러 신청하세요.</div>';
+  }
+  const b = document.getElementById('guiModalBody'); if(b) b.innerHTML = h;
+}
+function frChat(i){ const f = FR_LIST[i]; if(f) openChatPanel('💬 '+esc(f.nick), pairRoom(S.nickname, f.nick)); }
+function frVoice(i){ const f = FR_LIST[i]; if(f) vcJoin(pairRoom(S.nickname, f.nick)); }
+async function frRemove(i){
+  const f = FR_LIST[i]; if(!f) return;
+  if(!confirm(f.nick+'님을 친구에서 삭제할까요?')) return;
+  await NET.req('/friend/remove', {nick:S.nickname, target:f.nick});
+  showFriendsGUI();
+}
+
+/* ═══════════════════ 🎉 파티 GUI ═══════════════════ */
+async function showPartyGUI(){
+  if(!S || !S.nickname){ alert('먼저 소셜 탭에서 고유이름을 설정하세요.'); return; }
+  openGUI('🎉 파티', '<div style="color:var(--mut);text-align:center;padding:20px">불러오는 중...</div>', {color:'#ffd23f'});
+  const r = await NET.req('/party/state', {nick:S.nickname});
+  let h;
+  if(!r || !r.ok){ h = '<div style="color:var(--mut);text-align:center;padding:20px">서버 미연결</div>'; }
+  else if(!r.party){
+    h = '<div style="text-align:center;padding:14px">'+
+      '<div style="color:var(--mut);font-size:12px;margin-bottom:10px">파티가 없습니다</div>'+
+      '<button class="buy" style="padding:8px 18px" onclick="partyCreate()">🎉 파티 만들기</button>'+
+      '<div style="font-size:11px;color:var(--mut);margin-top:12px">파티를 만든 뒤 소셜탭 <b>접속 중 목록</b>에서<br>상대 옆 <b>🎉</b> 버튼으로 초대하세요. (최대 8명)</div></div>';
+  } else {
+    const p = r.party;
+    h = '<div style="font-size:12px;margin-bottom:8px;color:var(--mut)">파티원 '+p.members.length+'/8</div>'+
+      p.members.map(m=>
+        '<div style="padding:5px 4px;border-bottom:1px solid var(--line);font-size:12px">'+
+        (m.online?'🟢':'⚫')+' '+(m.owner?'⭐ ':'')+'<b>'+esc(m.nick)+'</b>'+
+        (m.owner?' <span style="color:var(--gold);font-size:10px">파티장</span>':'')+'</div>').join('')+
+      '<div style="display:flex;gap:6px;margin-top:12px">'+
+      '<button class="buy" style="flex:1;padding:7px" onclick="openChatPanel(\'🎉 파티 채팅\',\'party:'+p.id+'\')">💬 파티 채팅</button>'+
+      '<button class="buy" style="flex:1;padding:7px;background:linear-gradient(135deg,#0d3a2a,#43e6cf)" onclick="vcJoin(\'party:'+p.id+'\')">🎤 파티 음성</button>'+
+      '<button class="buy" style="padding:7px;background:#3a2030" onclick="partyLeave()">🚪 나가기</button></div>'+
+      '<div style="font-size:11px;color:var(--mut);margin-top:8px">초대: 소셜탭 접속 중 목록에서 🎉 버튼</div>';
+  }
+  const b = document.getElementById('guiModalBody'); if(b) b.innerHTML = h;
+}
+async function partyCreate(){ await NET.req('/party/create', {nick:S.nickname}); showPartyGUI(); }
+async function partyLeave(){
+  if(!confirm('파티에서 나갈까요?')) return;
+  await NET.req('/party/leave', {nick:S.nickname});
+  if(VC.room && VC.room.startsWith('party:')) vcLeave();
+  showPartyGUI();
+}
+
+/* ═══════════════════ 🎤 음성채팅 (WebRTC · 서버 폴링 시그널링) ═══════════════════ */
+const VC = { room:null, peers:{}, stream:null, seq:0, timer:null, muted:false };
+async function vcJoin(room){
+  if(!room) return;
+  if(VC.room === room){ vcLeave(); return; }
+  if(VC.room) vcLeave();
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    alert('이 브라우저는 음성채팅을 지원하지 않습니다.'); return;
+  }
+  try{
+    VC.stream = await navigator.mediaDevices.getUserMedia({audio:true});
+  }catch(e){
+    alert('🎤 마이크 권한이 필요합니다.\n(https 접속에서만 동작합니다)'); return;
+  }
+  VC.room = room; VC.seq = 0; VC.peers = {}; VC.muted = false;
+  vcSend('*', {t:'hello'});
+  VC.timer = setInterval(vcPoll, 1200);
+  vcBar();
+  log('<span style="color:#43e6cf">🎤 음성채팅 입장 — 같은 방에 있는 사람과 자동 연결됩니다.</span>');
+}
+function vcSend(to, payload){
+  if(!VC.room) return;
+  NET.req('/rtc/send', {room:VC.room, from:S.nickname, to:to, payload:payload});
+}
+async function vcPoll(){
+  if(!VC.room) return;
+  const r = await NET.req('/rtc/poll', {room:VC.room, nick:S.nickname, since:VC.seq});
+  if(!r || !r.ok) return;
+  VC.seq = r.seq || VC.seq;
+  for(const m of (r.msgs||[])){
+    try{ await vcHandle(m); }catch(e){ console.warn('vc', e); }
+  }
+  vcBar();
+}
+async function vcHandle(m){
+  const from = m.from, p = m.payload || {};
+  if(p.t === 'hello'){ vcPeer(from, true); return; }        // 기존 멤버가 신규에게 offer
+  if(p.t === 'offer'){
+    const pc = vcPeer(from, false);
+    await pc.setRemoteDescription(p.sdp);
+    const ans = await pc.createAnswer();
+    await pc.setLocalDescription(ans);
+    vcSend(from, {t:'answer', sdp:pc.localDescription});
+    return;
+  }
+  if(p.t === 'answer'){
+    const pr = VC.peers[from];
+    if(pr && pr.pc.signalingState !== 'stable') await pr.pc.setRemoteDescription(p.sdp);
+    return;
+  }
+  if(p.t === 'ice'){
+    const pr = VC.peers[from];
+    if(pr && p.cand){ try{ await pr.pc.addIceCandidate(p.cand); }catch(e){} }
+    return;
+  }
+  if(p.t === 'bye'){ vcDrop(from); }
+}
+function vcPeer(nick, makeOffer){
+  if(VC.peers[nick]) return VC.peers[nick].pc;
+  const pc = new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]});
+  VC.stream.getTracks().forEach(t=>pc.addTrack(t, VC.stream));
+  pc.onicecandidate = e=>{ if(e.candidate) vcSend(nick, {t:'ice', cand:e.candidate}); };
+  const au = document.createElement('audio');
+  au.autoplay = true; au.style.display = 'none';
+  document.body.appendChild(au);
+  pc.ontrack = e=>{ au.srcObject = e.streams[0]; };
+  pc.onconnectionstatechange = ()=>{
+    if(['failed','closed','disconnected'].includes(pc.connectionState)) vcDrop(nick);
+  };
+  VC.peers[nick] = {pc, au};
+  if(makeOffer){
+    pc.createOffer().then(o=>pc.setLocalDescription(o))
+      .then(()=>vcSend(nick, {t:'offer', sdp:pc.localDescription}));
+  }
+  return pc;
+}
+function vcDrop(nick){
+  const pr = VC.peers[nick];
+  if(pr){ try{ pr.pc.close(); }catch(e){} try{ pr.au.remove(); }catch(e){} delete VC.peers[nick]; }
+  vcBar();
+}
+function vcMute(){
+  VC.muted = !VC.muted;
+  if(VC.stream) VC.stream.getAudioTracks().forEach(t=>t.enabled = !VC.muted);
+  vcBar();
+}
+function vcLeave(){
+  vcSend('*', {t:'bye'});
+  clearInterval(VC.timer); VC.timer = null;
+  Object.keys(VC.peers).forEach(vcDrop);
+  if(VC.stream){ VC.stream.getTracks().forEach(t=>t.stop()); VC.stream = null; }
+  VC.room = null;
+  const b = document.getElementById('vcBar'); if(b) b.remove();
+  log('🎤 음성채팅 종료');
+}
+function vcBar(){
+  if(!VC.room){ const b0 = document.getElementById('vcBar'); if(b0) b0.remove(); return; }
+  let b = document.getElementById('vcBar');
+  if(!b){
+    b = document.createElement('div');
+    b.id = 'vcBar';
+    b.style.cssText = 'position:fixed;left:12px;bottom:12px;z-index:13000;background:var(--panel);'+
+      'border:2px solid #43e6cf;padding:8px 11px;font-size:12px;display:flex;gap:8px;align-items:center;'+
+      'box-shadow:0 0 14px rgba(67,230,207,.4);font-family:inherit;';
+    document.body.appendChild(b);
+  }
+  const label = VC.room.startsWith('party:') ? '파티' : VC.room.startsWith('dm:') ? '친구' : VC.room;
+  b.innerHTML = '🎤 <b style="color:#43e6cf">'+label+' 음성채팅</b> · 연결 '+Object.keys(VC.peers).length+'명 '+
+    '<button class="buy" style="font-size:11px;padding:3px 8px" onclick="vcMute()">'+(VC.muted?'🔇 해제':'🎙 음소거')+'</button>'+
+    '<button class="buy" style="font-size:11px;padding:3px 8px;background:#3a2030" onclick="vcLeave()">나가기</button>';
+}
+
+/* ═══════════════════ 🏰 클랜 관리 (동맹/적대) ═══════════════════ */
+async function loadGuildExtras(){
+  const box = document.getElementById('guildExtra');
+  if(!box || !S.guild) return;
+  let h = '<div style="border-top:2px solid var(--line);margin-top:12px;padding-top:10px">'+
+    '<div style="color:#a86bff;font-size:12px;margin-bottom:6px">🏰 내 클랜: <b>'+esc(S.guild)+'</b></div>'+
+    '<div style="font-size:11px;color:var(--mut);margin-bottom:8px">멤버 초대: 소셜탭 접속 중 목록에서 🏰 버튼 (클랜장만)</div>';
+  const r = await NET.req('/guild/relation/list', {guild:S.guild});
+  if(r && r.ok){
+    const REL_KO = {ally:'🤝 동맹', ally_pending:'⏳ 동맹 대기', enemy:'⚔️ 적대'};
+    h += '<div style="font-size:12px;color:var(--cyan);margin-bottom:4px">외교 관계</div>';
+    h += (r.relations && r.relations.length) ? r.relations.map(x=>
+      '<div style="font-size:12px;padding:3px 0;display:flex;align-items:center">'+
+      (REL_KO[x.type]||x.type)+' <b style="margin-left:5px">'+esc(x.guild)+'</b>'+
+      (x.type==='ally_pending' ? ' <span style="font-size:10px;color:var(--mut)">('+(x.req===S.guild?'우리가 신청':'상대가 신청 — 아래에서 수락')+')</span>':'')+
+      '<button class="buy" style="margin-left:auto;font-size:10px;padding:2px 7px;background:#3a2030" onclick="guildRel(\''+esc(x.guild).replace(/'/g,"\\'")+'\',\'none\')">해제</button></div>'
+    ).join('') : '<div style="font-size:11px;color:var(--mut)">관계 없음</div>';
+    h += '<div style="display:flex;gap:5px;margin-top:8px;flex-wrap:wrap">'+
+      '<input id="relTarget" placeholder="상대 클랜명" style="flex:1;min-width:110px;background:var(--panel2);border:1px solid var(--line);color:var(--txt);padding:5px;font-family:inherit;font-size:11px">'+
+      '<button class="buy" style="font-size:11px;padding:4px 9px" onclick="guildRelInput(\'ally\')">🤝 동맹 신청</button>'+
+      '<button class="buy" style="font-size:11px;padding:4px 9px;background:linear-gradient(135deg,#3a0d0d,#e94560)" onclick="guildRelInput(\'enemy\')">⚔️ 적대 선언</button></div>'+
+    '<div style="font-size:10px;color:var(--mut);margin-top:4px">동맹은 양쪽 클랜장이 모두 신청하면 성립 · 적대는 일방 선언 (클랜장만 가능)</div>'+
+    '<button class="buy" style="width:100%;margin-top:10px;padding:7px;background:linear-gradient(135deg,#3a0d3a,#a86bff)" onclick="showClanWarGUI()">📅 클랜전 관리</button></div>';
+  } else { h += '</div>'; }
+  box.innerHTML = h;
+}
+function guildRelInput(t){
+  const i = document.getElementById('relTarget');
+  if(!i || !i.value.trim()){ sfx('error'); return; }
+  guildRel(i.value.trim(), t);
+}
+async function guildRel(target, t){
+  const r = await NET.req('/guild/relation/set', {nick:S.nickname, target:target, rel:t});
+  if(r && r.ok){
+    sfx('buy');
+    log(t==='none'?'🕊 ['+esc(target)+'] 관계 해제':r.rel==='ally'?'🤝 ['+esc(target)+'] 동맹 성립!':r.rel==='ally_pending'?'⏳ ['+esc(target)+'] 동맹 신청 — 상대 클랜장도 신청하면 성립':'⚔️ ['+esc(target)+'] 적대 선언!');
+    loadGuildExtras();
+  } else {
+    sfx('error');
+    log('<span class="r">'+(r&&r.error==='not_owner'?'클랜장만 가능합니다':r&&r.error==='no_guild'?'존재하지 않는 클랜':'실패')+'</span>');
+  }
+}
+
+/* ═══════════════════ 📅 클랜전 GUI ═══════════════════ */
+async function showClanWarGUI(){
+  openGUI('📅 클랜전', '<div style="color:var(--mut);text-align:center;padding:20px">불러오는 중...</div>', {color:'#a86bff', width:520});
+  const r = await NET.req('/clanwar/list', {guild:S.guild||''});
+  let h = '';
+  if(S.guild){
+    const today = new Date(); today.setDate(today.getDate()+1);
+    h += '<div style="border:1px dashed #a86bff;padding:9px;margin-bottom:10px">'+
+      '<div style="font-size:12px;color:#a86bff;margin-bottom:6px">⚔️ 클랜전 신청 (클랜장만) — 미래 날짜 예약제 (몇 달 뒤도 가능)</div>'+
+      '<div style="display:flex;gap:5px;flex-wrap:wrap">'+
+      '<input id="cwTarget" placeholder="상대 클랜명" style="flex:1;min-width:100px;background:var(--panel2);border:1px solid var(--line);color:var(--txt);padding:5px;font-family:inherit;font-size:11px">'+
+      '<input id="cwDate" type="date" min="'+today.toISOString().slice(0,10)+'" style="background:var(--panel2);border:1px solid var(--line);color:var(--txt);padding:5px;font-family:inherit;font-size:11px">'+
+      '<button class="buy" style="font-size:11px;padding:4px 10px" onclick="cwRequest()">📨 신청</button></div>'+
+      '<div style="font-size:10px;color:var(--mut);margin-top:4px">상대 클랜장이 수락하면 예약 확정 · 당일부터 48시간 동안 상대 클랜원과의 PvP 승리가 1점</div></div>';
+  } else {
+    h += '<div style="font-size:12px;color:var(--mut);margin-bottom:10px">클랜에 가입하면 클랜전을 신청할 수 있습니다.</div>';
+  }
+  if(r && r.ok && r.wars && r.wars.length){
+    const ST_KO = {scheduled:'📅 예정', active:'🔥 진행 중', done:'🏁 종료'};
+    h += r.wars.map(w=>{
+      const d = new Date(w.date*1000).toLocaleString('ko-KR');
+      return '<div style="border:1px solid var(--line);padding:8px;margin:5px 0;font-size:12px">'+
+        '<b style="color:#e94560">'+esc(w.g1)+'</b> <span style="color:var(--mut)">vs</span> <b style="color:#43a0e6">'+esc(w.g2)+'</b>'+
+        ' <span style="float:right;color:var(--gold)">'+(ST_KO[w.status]||w.status)+'</span><br>'+
+        '<span style="color:var(--mut);font-size:11px">'+d+'</span>'+
+        (w.status!=='scheduled' ? '<br>점수: <b>'+w.score1+'</b> : <b>'+w.score2+'</b>'+(w.winner?' · 승자: <b style="color:var(--gold)">'+esc(w.winner)+'</b>':'') : '')+
+        '</div>';
+    }).join('');
+  } else {
+    h += '<div style="color:var(--mut);font-size:12px;text-align:center;padding:12px">클랜전 기록이 없습니다</div>';
+  }
+  const b = document.getElementById('guiModalBody'); if(b) b.innerHTML = h;
+}
+async function cwRequest(){
+  const t = document.getElementById('cwTarget'), d = document.getElementById('cwDate');
+  if(!t || !t.value.trim() || !d || !d.value){ sfx('error'); alert('상대 클랜명과 날짜를 입력하세요.'); return; }
+  const ts = Math.floor(new Date(d.value + 'T20:00:00').getTime()/1000);
+  const r = await NET.req('/invite/send', {type:'clanwar', from:S.nickname, to:'',
+    data:{from_guild:S.guild, target:t.value.trim(), date:ts}});
+  if(r && r.ok){ sfx('buy'); alert('📨 클랜전 신청 완료!\n상대 클랜장('+r.to+')이 수락하면 예약됩니다.\n예정일 저녁 8시 시작 · 48시간 진행'); }
+  else { sfx('error'); alert('신청 실패: '+(r&&r.error==='not_owner'?'클랜장만 신청 가능':r&&r.error==='no_guild'?'존재하지 않는 클랜':r&&r.error==='dup'?'이미 신청 대기 중':r&&r.error==='bad_date'?'미래 날짜를 선택하세요':(r&&r.error)||'서버 오류')); }
+}
+
+/* ═══════════════════ 🏆 PvP 랭킹 ═══════════════════ */
+async function showPvpRankGUI(){
+  openGUI('🏆 PvP 랭킹', '<div style="color:var(--mut);text-align:center;padding:20px">불러오는 중...</div>', {color:'#ffd23f'});
+  const r = await NET.req('/pvp/rank', {});
+  let h;
+  if(!r || !r.ok){ h = '<div style="color:var(--mut);text-align:center;padding:20px">서버 미연결</div>'; }
+  else if(!r.rank || !r.rank.length){ h = '<div style="color:var(--mut);text-align:center;padding:20px">아직 PvP 기록이 없습니다<br><span style="font-size:11px">첫 승리의 주인공이 되어보세요!</span></div>'; }
+  else {
+    h = r.rank.map((p,i)=>{
+      const total = p.wins + p.losses;
+      const wr = total ? Math.round(p.wins/total*100) : 0;
+      const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':(i+1)+'위';
+      return '<div style="display:flex;align-items:center;padding:6px 4px;border-bottom:1px solid var(--line);font-size:12px'+(p.nick===S.nickname?';background:rgba(255,210,63,.08)':'')+'">'+
+        '<span style="width:42px;color:var(--gold)">'+medal+'</span><b>'+esc(p.nick)+'</b>'+
+        '<span style="margin-left:auto;color:var(--mut)"><b style="color:#7bffb4">'+p.wins+'승</b> '+p.losses+'패 · 승률 '+wr+'%</span></div>';
+    }).join('');
+  }
+  const b = document.getElementById('guiModalBody'); if(b) b.innerHTML = h;
+}
+
+/* ═══════════════════ 🔁 스테이지 파밍 (클리어한 곳 재방문) ═══════════════════ */
+function farmStageTo(n){
+  if(window.PVP_ON){ log('PvP 중에는 이동할 수 없습니다.'); return; }
+  const cap = Math.min(S.maxStage||1, MAX_STAGE);
+  n = Math.max(1, Math.min(cap, n));
+  if(n === S.stage) return;
+  S.stage = n; S.kills = 0; S.bossKills = 0;
+  if(S.quest) S.quest.current = 0;
+  if(typeof spawnMob === 'function') spawnMob(false);
+  log('🔁 <b>'+n+'층</b>으로 이동! (클리어 지역 파밍 · 최고기록 '+cap+'층)');
+  renderAll(); saveGame(true);
+}
+function farmStage(d){
+  const cap = Math.min(S.maxStage||1, MAX_STAGE);
+  if(d > 0 && (S.stage||1) >= cap){ log('최고 기록('+cap+'층)까지만 이동 가능 — 그 뒤는 직접 클리어하세요!'); return; }
+  farmStageTo((S.stage||1) + d);
+}
+function farmStageJump(){
+  const cap = Math.min(S.maxStage||1, MAX_STAGE);
+  const v = prompt('이동할 스테이지 (1 ~ '+cap+')\n클리어한 곳 어디든 다시 가서 파밍할 수 있습니다.', S.stage||1);
+  if(v === null) return;
+  const n = parseInt(v);
+  if(!n || n < 1 || n > cap){ alert('1~'+cap+' 사이만 가능합니다 (클리어한 곳까지).'); return; }
+  farmStageTo(n);
+}
+
 /* ═══════════════════ ⚔️ PvP 실시간 대전 ═══════════════════ */
 window.PVP_ON = false;
 const PVP = { match:null, opp:null, oppPower:0, myHp:100, oppHp:100, seq:0,
   oLunge:0, oFlash:0, oShake:0, lastClick:0, searching:false,
   joinTimer:null, pollTimer:null, fx:[], floats:[], banner:'', bannerUntil:0,
   savedStageName:'', ending:false };
-const PVP_GRADE_COL = {normal:'#c8c8c8', rare:'#43e6cf', epic:'#a06bff', unique:'#ffd23f', legend:'#ff8a3a', myth:'#ff5470'};
+const PVP_GRADE_COL = new Proxy({}, {get:(_,g)=> (typeof GRADE_COLOR!=='undefined' && GRADE_COLOR[g]) || '#c8c8c8'});
 
 function pvpMyLoadout(){
   const job = curJob();
@@ -9780,7 +10549,7 @@ function drawPvpOpponent(now, bob){
     if(gi >= 4){
       ctx.save(); ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = 0.20 + Math.sin(now/200)*0.10;
-      ctx.fillStyle = PVP_GRADE_COL[o.wgrade] || '#fff';
+      ctx.fillStyle = (typeof GRADE_COLOR!=='undefined' && GRADE_COLOR[o.wgrade]) || '#fff';
       ctx.fillRect(ox+8, oy+8, 34, 52);
       ctx.restore();
     }
@@ -9793,7 +10562,7 @@ function drawPvpOpponent(now, bob){
   ctx.fillStyle = '#ff9db0';
   ctx.fillText((o.icon||'') + ' ' + (o.nick||'???') + ' LV.' + (o.level||1), ox+36, oy-18);
   ctx.font = '10px Galmuri11, monospace';
-  ctx.fillStyle = PVP_GRADE_COL[o.wgrade] || '#c8c8c8';
+  ctx.fillStyle = (typeof GRADE_COLOR!=='undefined' && GRADE_COLOR[o.wgrade]) || '#c8c8c8';
   ctx.fillText('🗡 ' + (o.wname||'맨손') + (o.wenh>0 ? ' +'+o.wenh : ''), ox+36, oy-6);
   ctx.restore();
   // 검격 이펙트
